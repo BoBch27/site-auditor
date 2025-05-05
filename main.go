@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 )
 
 func main() {
@@ -13,5 +14,11 @@ func main() {
 	// parse flags
 	flag.Parse()
 
-	fmt.Println(*input, *output)
+	urls, err := readURLsFromCSV(*input)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(urls)
+	fmt.Println(*output)
 }
