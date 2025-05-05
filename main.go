@@ -14,16 +14,19 @@ func main() {
 	// parse flags
 	flag.Parse()
 
+	// extract urls
 	urls, err := readURLsFromCSV(*input)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// perform audits in a headless browser
 	audits, err := auditWebsites(context.Background(), urls)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// write audit results
 	err = writeResultsToCSV(*output, audits)
 	if err != nil {
 		log.Fatal(err)
