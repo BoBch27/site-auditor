@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 )
+
+type auditResult struct {
+	url string
+}
 
 func main() {
 	// define flags
@@ -19,6 +22,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(urls)
-	fmt.Println(*output)
+	var results []auditResult
+	for _, url := range urls {
+		results = append(results, auditResult{url: url})
+	}
+
+	err = writeResultsToCSV(*output, results)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

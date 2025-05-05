@@ -40,3 +40,30 @@ func readURLsFromCSV(filename string) ([]string, error) {
 
 	return urls, nil
 }
+
+// writeResultsToCSV writes the results to the output CSV
+func writeResultsToCSV(filename string, results []auditResult) error {
+	outFile, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer outFile.Close()
+
+	writer := csv.NewWriter(outFile)
+	defer writer.Flush()
+
+	err = writer.Write([]string{"URL"})
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+
+	for _, res := range results {
+		err := writer.Write([]string{res.url})
+		if err != nil {
+			return fmt.Errorf("failed to write to file: %w", err)
+		}
+	}
+
+	writer.Flush()
+	return nil
+}
