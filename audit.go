@@ -5,11 +5,13 @@ import (
 	"log"
 	"time"
 
+	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 )
 
 type auditResult struct {
 	url string
+	lcp float64
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -51,10 +53,22 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	return results, nil
 }
 
+// script to collect LCP in the browser
+const lcpScript = `(() => {
+	window.__lcp = 0;
+	
+	new PerformanceObserver((list) => {
+  		const entries = list.getEntries();
+  		const lastEntry = entries[entries.length - 1]; // use latest LCP candidate
+  		
+		window.__lcp = lastEntry.startTime || 0;
+	}).observe({ type: "largest-contentful-paint", buffered: true });
+})();`
+
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
-	result := auditResult{url}
+	result := auditResult{url: url}
 
 	// create tab context
 	tabCtx, cancelTab := chromedp.NewContext(ctx)
@@ -64,8 +78,31 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	timeoutCtx, cancelTimeout := context.WithTimeout(tabCtx, 60*time.Second)
 	defer cancelTimeout()
 
-	// navigate browser to url
-	err := chromedp.Run(timeoutCtx, chromedp.Navigate(url))
+	// inject LCP observer before page loads
+	err := chromedp.Run(
+		timeoutCtx,
+		page.Enable(),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
+			return err
+		}),
+	)
+	if err != nil {
+		return auditResult{}, err
+	}
+
+	// navigate browser to url (and wait to settle)
+	err = chromedp.Run(
+		timeoutCtx,
+		chromedp.Navigate(url),
+		chromedp.Sleep(3*time.Second),
+	)
+	if err != nil {
+		return auditResult{}, err
+	}
+
+	// calculate largest contentful paint time
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__lcp || 0`, &result.lcp))
 	if err != nil {
 		return auditResult{}, err
 	}

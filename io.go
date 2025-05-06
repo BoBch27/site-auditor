@@ -52,13 +52,16 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 	writer := csv.NewWriter(outFile)
 	defer writer.Flush()
 
-	err = writer.Write([]string{"URL"})
+	err = writer.Write([]string{"URL", "LCP (ms)"})
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
 	}
 
 	for _, res := range results {
-		err := writer.Write([]string{res.url})
+		err := writer.Write([]string{
+			res.url,
+			fmt.Sprint(res.lcp),
+		})
 		if err != nil {
 			return fmt.Errorf("failed to write to file: %w", err)
 		}
