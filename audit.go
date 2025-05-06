@@ -56,8 +56,12 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	result := auditResult{url}
 
+	// create tab context
+	tabCtx, cancelTab := chromedp.NewContext(ctx)
+	defer cancelTab()
+
 	// set context timeout
-	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
+	timeoutCtx, cancelTimeout := context.WithTimeout(tabCtx, 60*time.Second)
 	defer cancelTimeout()
 
 	// navigate browser to url
