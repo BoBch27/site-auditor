@@ -12,8 +12,8 @@ type auditResult struct {
 	url string
 }
 
-// auditWebsite opens the URL in a headless browser and executes various checks
-// before returning an audit result
+// auditWebsites opens all URLs in a headless browser and executes various checks
+// before returning a set of audit results
 func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	var results []auditResult
 
@@ -39,14 +39,8 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	}
 
 	for _, url := range urls {
-		result := auditResult{url}
-
-		// set context timeout
-		timeoutCtx, cancelTimeout := context.WithTimeout(browserCtx, 60*time.Second)
-		defer cancelTimeout()
-
-		// navigate browser to url
-		err = chromedp.Run(timeoutCtx, chromedp.Navigate(url))
+		// audit each website
+		result, err := auditWebsite(browserCtx, url)
 		if err != nil {
 			return nil, err
 		}
@@ -55,4 +49,22 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	}
 
 	return results, nil
+}
+
+// auditWebsite opens the URL in a headless browser and executes various checks
+// before returning an audit result
+func auditWebsite(ctx context.Context, url string) (auditResult, error) {
+	result := auditResult{url}
+
+	// set context timeout
+	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
+	defer cancelTimeout()
+
+	// navigate browser to url
+	err := chromedp.Run(timeoutCtx, chromedp.Navigate(url))
+	if err != nil {
+		return auditResult{}, err
+	}
+
+	return result, nil
 }
