@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 )
 
@@ -71,7 +74,10 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	result := auditResult{url: url}
 
 	// create tab context
-	tabCtx, cancelTab := chromedp.NewContext(ctx)
+	tabCtx, cancelTab, err := newTabContext(ctx)
+	if err != nil {
+		return auditResult{}, err
+	}
 	defer cancelTab()
 
 	// set context timeout
@@ -79,7 +85,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	defer cancelTimeout()
 
 	// inject LCP observer before page loads
-	err := chromedp.Run(
+	err = chromedp.Run(
 		timeoutCtx,
 		page.Enable(),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -108,4 +114,27 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	}
 
 	return result, nil
+}
+
+// newTabContext opens a new tab in the same window and returns a chromedp context for it
+// to be used instead of chromedp.NewContext(ctx), as that opens a new window
+func newTabContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
+	ctxData := chromedp.FromContext(ctx)
+	if ctxData == nil || ctxData.Browser == nil {
+		return nil, nil, errors.New("browser not initialised in context")
+	}
+
+	execCtx := cdp.WithExecutor(ctx, ctxData.Browser)
+
+	// create new tab in existing window
+	targetID, err := target.CreateTarget("about:blank").
+		WithNewWindow(false). // IMPORTANT: ensures it's a new tab, not a window
+		Do(execCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// create new chromedp context attached to new tab
+	tabCtx, cancelTab := chromedp.NewContext(ctx, chromedp.WithTargetID(targetID))
+	return tabCtx, cancelTab, nil
 }
