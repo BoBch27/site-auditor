@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -40,7 +41,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	// open headless browser with a blank page
 	err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialise browser: %w", err)
 	}
 
 	for _, url := range urls {
@@ -76,7 +77,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	// create tab context
 	tabCtx, cancelTab, err := newTabContext(ctx)
 	if err != nil {
-		return auditResult{}, err
+		return auditResult{}, fmt.Errorf("failed to initialise tab for %s: %w", url, err)
 	}
 	defer cancelTab()
 
@@ -94,7 +95,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		}),
 	)
 	if err != nil {
-		return auditResult{}, err
+		return auditResult{}, fmt.Errorf("failed to inject script for %s: %w", url, err)
 	}
 
 	// navigate browser to url (and wait to settle)
@@ -104,13 +105,13 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		chromedp.Sleep(3*time.Second),
 	)
 	if err != nil {
-		return auditResult{}, err
+		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
 	}
 
 	// calculate largest contentful paint time
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__lcp || 0`, &result.lcp))
 	if err != nil {
-		return auditResult{}, err
+		return auditResult{}, fmt.Errorf("failed to evaluate LCP for %s: %w", url, err)
 	}
 
 	return result, nil
