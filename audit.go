@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -21,8 +23,6 @@ type auditResult struct {
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
 func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
-	var results []auditResult
-
 	// setup browser options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
@@ -44,15 +44,38 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to initialise browser: %w", err)
 	}
 
-	for _, url := range urls {
-		// audit each website
-		result, err := auditWebsite(browserCtx, url)
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, result)
+	// determine concurrency limit - use number based on system resources
+	concurrencyLimit := runtime.NumCPU() * 2 // reasonable default: 2 tabs per CPU core
+	if concurrencyLimit > 8 {
+		concurrencyLimit = 8 // cap at 8 for browser stability
 	}
+
+	semaphore := make(chan struct{}, concurrencyLimit)
+
+	var wg sync.WaitGroup
+	results := make([]auditResult, len(urls))
+	errs := make([]error, len(urls))
+
+	for i, url := range urls {
+		wg.Add(1)
+
+		// acquire semaphore (blocks if max goroutines are already running)
+		semaphore <- struct{}{}
+
+		// audit each website
+		go func(i int, url string) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Release semaphore when done
+
+			res, err := auditWebsite(browserCtx, url)
+
+			results[i] = res
+			errs[i] = err
+		}(i, url)
+	}
+
+	wg.Wait()
+	close(semaphore)
 
 	return results, nil
 }
