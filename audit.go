@@ -57,11 +57,13 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
 	}
 
-	results := make([]auditResult, len(urls))
+	urlsNo := len(urls)
+	results := make([]auditResult, urlsNo)
 	var errs []error
 
 	for i, url := range urls {
 		// audit each website
+		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
 		res, err := auditWebsite(browserCtx, url)
 
 		results[i] = res
