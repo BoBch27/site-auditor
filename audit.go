@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 )
@@ -24,6 +25,8 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-cache", true),
+		chromedp.Flag("incognito", true),
 	)
 
 	// create context with ExecAllocator
@@ -43,6 +46,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	// inject LCP observer to run on all pages
 	err = chromedp.Run(
 		browserCtx,
+		network.Enable(),
 		page.Enable(),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
@@ -78,8 +82,22 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelTimeout()
 
+	// clear network cache and cookies before each run
+	err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := network.ClearBrowserCache().Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = network.ClearBrowserCookies().Do(ctx)
+		return err
+	}))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to clear browser cache and cookies: %w", err)
+	}
+
 	// navigate browser to url (and wait to settle)
-	err := chromedp.Run(
+	err = chromedp.Run(
 		timeoutCtx,
 		chromedp.Navigate(url),
 		chromedp.WaitReady("body", chromedp.ByQuery),
