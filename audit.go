@@ -65,7 +65,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		// audit each website
 		go func(i int, url string) {
 			defer wg.Done()
-			defer func() { <-semaphore }() // Release semaphore when done
+			defer func() { <-semaphore }() // release semaphore when done
 
 			res, err := auditWebsite(browserCtx, url)
 
@@ -77,7 +77,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	wg.Wait()
 	close(semaphore)
 
-	return results, nil
+	return results, errors.Join(errs...)
 }
 
 // script to collect LCP in the browser
