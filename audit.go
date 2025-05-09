@@ -54,14 +54,16 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	}
 
 	results := make([]auditResult, len(urls))
-	errs := make([]error, len(urls))
+	var errs []error
 
 	for i, url := range urls {
 		// audit each website
 		res, err := auditWebsite(browserCtx, url)
 
 		results[i] = res
-		errs[i] = err
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	return results, errors.Join(errs...)
