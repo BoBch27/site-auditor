@@ -125,7 +125,8 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	err = chromedp.Run(
 		timeoutCtx,
 		chromedp.Navigate(url),
-		chromedp.Sleep(3*time.Second),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Sleep(3*time.Second), //precautionary to ensure LCP is calculated
 	)
 	if err != nil {
 		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
