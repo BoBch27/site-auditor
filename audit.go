@@ -40,6 +40,19 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to initialise browser: %w", err)
 	}
 
+	// inject LCP observer to run on all pages
+	err = chromedp.Run(
+		browserCtx,
+		page.Enable(),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
+			return err
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
+	}
+
 	results := make([]auditResult, len(urls))
 	errs := make([]error, len(urls))
 
@@ -54,18 +67,6 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	return results, errors.Join(errs...)
 }
 
-// script to collect LCP in the browser
-const lcpScript = `(() => {
-	window.__lcp = 0;
-	
-	new PerformanceObserver((list) => {
-  		const entries = list.getEntries();
-  		const lastEntry = entries[entries.length - 1]; // use latest LCP candidate
-  		
-		window.__lcp = lastEntry.startTime || 0;
-	}).observe({ type: "largest-contentful-paint", buffered: true });
-})();`
-
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
@@ -75,21 +76,8 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelTimeout()
 
-	// inject LCP observer before page loads
-	err := chromedp.Run(
-		timeoutCtx,
-		page.Enable(),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
-			return err
-		}),
-	)
-	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to inject script for %s: %w", url, err)
-	}
-
 	// navigate browser to url (and wait to settle)
-	err = chromedp.Run(
+	err := chromedp.Run(
 		timeoutCtx,
 		chromedp.Navigate(url),
 		chromedp.WaitReady("body", chromedp.ByQuery),
@@ -107,3 +95,15 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 
 	return result, nil
 }
+
+// script to collect LCP in the browser
+const lcpScript = `(() => {
+	window.__lcp = 0;
+	
+	new PerformanceObserver((list) => {
+  		const entries = list.getEntries();
+  		const lastEntry = entries[entries.length - 1]; // use latest LCP candidate
+  		
+		window.__lcp = lastEntry.startTime || 0;
+	}).observe({ type: "largest-contentful-paint", buffered: true });
+})();`
