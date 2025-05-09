@@ -121,6 +121,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to inject script for %s: %w", url, err)
 	}
 
+	// extract context data
 	ctxData := chromedp.FromContext(timeoutCtx)
 	if ctxData == nil || ctxData.Target == nil {
 		return auditResult{}, errors.New("tab not initialised in context")
@@ -150,11 +151,13 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 // newTabContext opens a new tab in the same window and returns a chromedp context for it
 // to be used instead of chromedp.NewContext(ctx), as that opens a new window
 func newTabContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
+	// extract context data
 	ctxData := chromedp.FromContext(ctx)
 	if ctxData == nil || ctxData.Browser == nil {
 		return nil, nil, errors.New("browser not initialised in context")
 	}
 
+	// set executor (browser) for context
 	execCtx := cdp.WithExecutor(ctx, ctxData.Browser)
 
 	// create new tab in existing window
