@@ -121,12 +121,18 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to inject script for %s: %w", url, err)
 	}
 
+	ctxData := chromedp.FromContext(timeoutCtx)
+	if ctxData == nil || ctxData.Target == nil {
+		return auditResult{}, errors.New("tab not initialised in context")
+	}
+
 	// navigate browser to url (and wait to settle)
 	err = chromedp.Run(
 		timeoutCtx,
 		chromedp.Navigate(url),
 		chromedp.WaitReady("body", chromedp.ByQuery),
-		chromedp.Sleep(3*time.Second), //precautionary to ensure LCP is calculated
+		target.ActivateTarget(ctxData.Target.TargetID), // focus tab for LCP observer script to run
+		chromedp.Sleep(3*time.Second),                  //precautionary to ensure LCP is calculated
 	)
 	if err != nil {
 		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
