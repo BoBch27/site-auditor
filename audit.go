@@ -46,8 +46,8 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 
 	// determine concurrency limit - use number based on system resources
 	concurrencyLimit := runtime.NumCPU() * 2 // reasonable default: 2 tabs per CPU core
-	if concurrencyLimit > 8 {
-		concurrencyLimit = 8 // cap at 8 for browser stability
+	if concurrencyLimit > 4 {
+		concurrencyLimit = 4 // cap at 4 for browser stability
 	}
 
 	semaphore := make(chan struct{}, concurrencyLimit)
