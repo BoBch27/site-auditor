@@ -43,11 +43,19 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to initialise browser: %w", err)
 	}
 
-	// inject LCP observer to run on all pages
+	// enable additional chromedp domains
 	err = chromedp.Run(
 		browserCtx,
 		network.Enable(),
 		page.Enable(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable additional domains: %w", err)
+	}
+
+	// inject LCP observer to run on all pages
+	err = chromedp.Run(
+		browserCtx,
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
 			return err
