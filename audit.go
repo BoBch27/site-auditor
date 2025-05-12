@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,9 +16,10 @@ import (
 )
 
 type auditResult struct {
-	url         string
-	lcp         float64
-	consoleErrs []string
+	url            string
+	lcp            float64
+	consoleErrs    []string
+	missingHeaders []string
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -92,6 +94,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	result := auditResult{url: url}
 	var resMutex sync.Mutex
+	var headerChecked bool
 
 	// set context timeout
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
@@ -152,6 +155,33 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 			result.consoleErrs = append(result.consoleErrs, errorInfo)
 			resMutex.Unlock()
 		case *network.EventResponseReceived:
+			// only check headers for main document/page response
+			if msg.Type == network.ResourceTypeDocument {
+				if headerChecked {
+					return
+				}
+
+				headerChecked = true
+
+				for _, header := range securityHeaders {
+					found := false
+
+					// headers in chromedp are case-insensitive, but we need to check different formats
+					for key := range msg.Response.Headers {
+						if strings.EqualFold(key, header) {
+							found = true
+							break
+						}
+					}
+
+					if !found {
+						resMutex.Lock()
+						result.missingHeaders = append(result.missingHeaders, header)
+						resMutex.Unlock()
+					}
+				}
+			}
+
 			if msg.Response.Status >= 400 {
 				errorInfo := fmt.Sprintf(
 					"HTTP Error: %d for %s",
@@ -195,6 +225,16 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	}
 
 	return result, nil
+}
+
+// important security headers to check
+var securityHeaders = []string{
+	"Content-Security-Policy",
+	"Strict-Transport-Security",
+	"X-Content-Type-Options",
+	"X-Frame-Options",
+	"Permissions-Policy",
+	"Referrer-Policy",
 }
 
 // script to collect LCP in the browser
