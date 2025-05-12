@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
@@ -16,10 +17,11 @@ import (
 )
 
 type auditResult struct {
-	url            string
-	lcp            float64
-	consoleErrs    []string
-	missingHeaders []string
+	url              string
+	lcp              float64
+	consoleErrs      []string
+	missingHeaders   []string
+	responsiveIssues []string
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -69,6 +71,17 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
+	}
+
+	// emulate mobile device (iPhone)
+	err = chromedp.Run(
+		browserCtx,
+		emulation.SetUserAgentOverride("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"),
+		emulation.SetDeviceMetricsOverride(375, 667, 2.0, true),
+		emulation.SetTouchEmulationEnabled(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emulate mobile device: %w", err)
 	}
 
 	urlsNo := len(urls)
@@ -224,6 +237,12 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to evaluate LCP for %s: %w", url, err)
 	}
 
+	// capture mobile responsiveness issues
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(responsiveScript, &result.responsiveIssues))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to evaluate website responsiveness for %s: %w", url, err)
+	}
+
 	return result, nil
 }
 
@@ -248,3 +267,45 @@ const lcpScript = `(() => {
 		window.__lcp = lastEntry.startTime || 0;
 	}).observe({ type: "largest-contentful-paint", buffered: true });
 })();`
+
+// script to collect mobile responsiveness issues
+const responsiveScript = `(() => {
+	const responsiveIssues = [];
+
+    // 1 - check overflowing elements
+    const els = Array.from(document.querySelectorAll("*"));
+    const overflowingEls = els
+        .filter(el => el.scrollWidth > el.clientWidth + 5)
+        .map(el => {
+			const tag = "tag: " + el.tagName + "; ";
+			const id = "id: " + el.id + "; ";
+			const className = "class: " + el.className + "; ";
+			const overflow = "overflow: " + (el.scrollWidth - el.clientWidth).toString();
+			return tag + id + className + overflow;
+		})
+        .slice(0, 3)
+		.forEach(el => {
+			responsiveIssues.push("Overflowing element: " + el);
+		});
+    
+    // 2 - check for viewport meta tag
+    const hasViewport = !!document.querySelector('meta[name="viewport"]');
+	if (!hasViewport) {
+		responsiveIssues.push("No viewport tag");
+	}
+    
+    // 3 - check if content adapts to viewport width
+    const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
+    const mainWidth = mainContent ? mainContent.offsetWidth : 0;
+    const windowWidth = window.innerWidth;
+    const widthRatio = mainWidth / windowWidth;
+    
+    // responsive sites typically have content that takes up
+    // 90-100 percent of viewport on mobile (not fixed pixel width)
+    const adaptiveLayout = widthRatio > 0.9;
+	if (!adaptiveLayout) {
+		responsiveIssues.push("Not adaptive layout");
+	}
+
+	return responsiveIssues;
+})()`
