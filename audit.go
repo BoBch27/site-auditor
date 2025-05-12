@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/network"
@@ -90,6 +91,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 // before returning an audit result
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	result := auditResult{url: url}
+	var resMutex sync.Mutex
 
 	// set context timeout
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
@@ -116,7 +118,10 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 			if msg.Type == runtime.APITypeError || msg.Type == runtime.APITypeWarning {
 				for _, arg := range msg.Args {
 					errInfo := fmt.Sprintf("[%s]: %s", msg.Type, arg.Value)
+
+					resMutex.Lock()
 					result.consoleErrs = append(result.consoleErrs, errInfo)
+					resMutex.Unlock()
 				}
 			}
 		case *runtime.EventExceptionThrown:
@@ -143,7 +148,9 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 				}
 			}
 
+			resMutex.Lock()
 			result.consoleErrs = append(result.consoleErrs, errorInfo)
+			resMutex.Unlock()
 		case *network.EventResponseReceived:
 			if msg.Response.Status >= 400 {
 				errorInfo := fmt.Sprintf(
@@ -152,7 +159,9 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 					msg.Response.URL,
 				)
 
+				resMutex.Lock()
 				result.consoleErrs = append(result.consoleErrs, errorInfo)
+				resMutex.Unlock()
 			}
 		case *network.EventLoadingFailed:
 			errorInfo := fmt.Sprintf(
@@ -162,7 +171,9 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 				msg.Type,
 			)
 
+			resMutex.Lock()
 			result.consoleErrs = append(result.consoleErrs, errorInfo)
+			resMutex.Unlock()
 		}
 	})
 
