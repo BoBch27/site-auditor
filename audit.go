@@ -9,12 +9,14 @@ import (
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
 type auditResult struct {
-	url string
-	lcp float64
+	url         string
+	lcp         float64
+	consoleErrs []string
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -46,6 +48,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	// enable additional chromedp domains
 	err = chromedp.Run(
 		browserCtx,
+		runtime.Enable(),
 		network.Enable(),
 		page.Enable(),
 	)
@@ -105,6 +108,63 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	if err != nil {
 		return auditResult{}, fmt.Errorf("failed to clear browser cache and cookies: %w", err)
 	}
+
+	// subscribe and listen to target events
+	chromedp.ListenTarget(timeoutCtx, func(ev interface{}) {
+		switch msg := ev.(type) {
+		case *runtime.EventConsoleAPICalled:
+			if msg.Type == runtime.APITypeError || msg.Type == runtime.APITypeWarning {
+				for _, arg := range msg.Args {
+					errInfo := fmt.Sprintf("[%s]: %s", msg.Type, arg.Value)
+					result.consoleErrs = append(result.consoleErrs, errInfo)
+				}
+			}
+		case *runtime.EventExceptionThrown:
+			exceptionDetails := msg.ExceptionDetails
+
+			errorInfo := fmt.Sprintf(
+				"Uncaught Exception: %s at %s:%d:%d (Script ID: %s)",
+				exceptionDetails.Text,
+				exceptionDetails.URL,
+				exceptionDetails.LineNumber,
+				exceptionDetails.ColumnNumber,
+				exceptionDetails.ScriptID,
+			)
+
+			if exceptionDetails.StackTrace != nil {
+				for _, callFrame := range exceptionDetails.StackTrace.CallFrames {
+					errorInfo += fmt.Sprintf(
+						"\n  at %s (%s:%d:%d)",
+						callFrame.FunctionName,
+						callFrame.URL,
+						callFrame.LineNumber,
+						callFrame.ColumnNumber,
+					)
+				}
+			}
+
+			result.consoleErrs = append(result.consoleErrs, errorInfo)
+		case *network.EventResponseReceived:
+			if msg.Response.Status >= 400 {
+				errorInfo := fmt.Sprintf(
+					"HTTP Error: %d for %s",
+					msg.Response.Status,
+					msg.Response.URL,
+				)
+
+				result.consoleErrs = append(result.consoleErrs, errorInfo)
+			}
+		case *network.EventLoadingFailed:
+			errorInfo := fmt.Sprintf(
+				"Request Failed: %s for %s (Reason: %s)",
+				msg.ErrorText,
+				msg.RequestID,
+				msg.Type,
+			)
+
+			result.consoleErrs = append(result.consoleErrs, errorInfo)
+		}
+	})
 
 	// navigate browser to url (and wait to settle)
 	err = chromedp.Run(

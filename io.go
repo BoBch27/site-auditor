@@ -52,7 +52,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 	writer := csv.NewWriter(outFile)
 	defer writer.Flush()
 
-	err = writer.Write([]string{"URL", "LCP (ms)"})
+	err = writer.Write([]string{"URL", "LCP (ms)", "Console Errors"})
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
 	}
@@ -61,6 +61,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 		err := writer.Write([]string{
 			res.url,
 			fmt.Sprint(res.lcp),
+			strings.Join(res.consoleErrs, ";\n"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to write to file: %w", err)
