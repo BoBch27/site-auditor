@@ -74,6 +74,18 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
 	}
 
+	// inject console error collection script to run on all pages
+	err = chromedp.Run(
+		browserCtx,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, err := page.AddScriptToEvaluateOnNewDocument(consoleErrScript).Do(ctx)
+			return err
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inject console error script: %w", err)
+	}
+
 	// emulate mobile device (iPhone)
 	err = chromedp.Run(
 		browserCtx,
@@ -131,43 +143,6 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	// subscribe and listen to target events
 	chromedp.ListenTarget(timeoutCtx, func(ev interface{}) {
 		switch msg := ev.(type) {
-		case *runtime.EventConsoleAPICalled:
-			if msg.Type == runtime.APITypeError || msg.Type == runtime.APITypeWarning {
-				for _, arg := range msg.Args {
-					errInfo := fmt.Sprintf("[%s]: %s", msg.Type, arg.Value)
-
-					resMutex.Lock()
-					result.consoleErrs = append(result.consoleErrs, errInfo)
-					resMutex.Unlock()
-				}
-			}
-		case *runtime.EventExceptionThrown:
-			exceptionDetails := msg.ExceptionDetails
-
-			errorInfo := fmt.Sprintf(
-				"Uncaught Exception: %s at %s:%d:%d (Script ID: %s)",
-				exceptionDetails.Text,
-				exceptionDetails.URL,
-				exceptionDetails.LineNumber,
-				exceptionDetails.ColumnNumber,
-				exceptionDetails.ScriptID,
-			)
-
-			if exceptionDetails.StackTrace != nil {
-				for _, callFrame := range exceptionDetails.StackTrace.CallFrames {
-					errorInfo += fmt.Sprintf(
-						"\n  at %s (%s:%d:%d)",
-						callFrame.FunctionName,
-						callFrame.URL,
-						callFrame.LineNumber,
-						callFrame.ColumnNumber,
-					)
-				}
-			}
-
-			resMutex.Lock()
-			result.consoleErrs = append(result.consoleErrs, errorInfo)
-			resMutex.Unlock()
 		case *network.EventResponseReceived:
 			// only check headers for main document/page response
 			if msg.Type == network.ResourceTypeDocument {
@@ -249,6 +224,12 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to evaluate website responsiveness for %s: %w", url, err)
 	}
 
+	// collect console errors and warnings
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to evaluate console errors for %s: %w", url, err)
+	}
+
 	return result, nil
 }
 
@@ -272,6 +253,41 @@ const lcpScript = `(() => {
   		
 		window.__lcp = lastEntry.startTime || 0;
 	}).observe({ type: "largest-contentful-paint", buffered: true });
+})();`
+
+// script to capture console errors and warnings
+const consoleErrScript = `(() => {
+	window.__console_errors = [];
+
+	// capture JS errors
+	window.addEventListener('error', (e) => {
+		const message = e.message + " at " + e.filename + ":" + e.lineno + ":" + e.colno + " (" + e.error?.stack + ")";
+		window.__console_errors.push("[Uncaught Exception]: " + message);
+	});
+	
+	// capture unhandled promise rejections
+	window.addEventListener('unhandledrejection', (e) => {
+		const message = (e.reason ? e.reason.message : "Unknown") + " (" + e.reason?.stack + ")";
+		window.__console_errors.push("[Unhandled Promise Rejection]: " + message);
+	});
+	
+	// override console.error to capture console errors
+	const originalConsoleError = console.error;
+	console.error = (...args) => {
+		const message = args.map(String).join(' ');
+		window.__console_errors.push("[Error]: " + message);
+		originalConsoleError.apply(console, args);
+	};
+	
+	// override console.warn to capture console warnings
+	const originalConsoleWarn = console.warn;
+	console.warn = (...args) => {
+		const message = args.map(String).join(' ');
+		window.__console_errors.push("[Warning]: " + message);
+		originalConsoleWarn.apply(console, args);
+	};
+	
+	return window.__console_errors;
 })();`
 
 // script to collect mobile responsiveness issues
