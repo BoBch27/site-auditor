@@ -272,7 +272,13 @@ const lcpScript = `(() => {
 const responsiveScript = `(() => {
 	const __responsiveIssues = [];
 
-    // 1 - check overflowing elements
+	// 1 - check for horizontal scrollbar
+	const horizontalBar = document.body.scrollWidth > window.innerWidth;
+	if (horizontalBar) {
+		__responsiveIssues.push("Has horizontal scrollbar");
+	}
+
+    // 2 - check overflowing elements
     const els = Array.from(document.querySelectorAll("*"));
     const overflowingEls = els
         .filter(el => el.scrollWidth > el.clientWidth + 5)
@@ -288,13 +294,13 @@ const responsiveScript = `(() => {
 			__responsiveIssues.push("Overflowing element: " + el);
 		});
     
-    // 2 - check for viewport meta tag
+    // 3 - check for viewport meta tag
     const hasViewport = !!document.querySelector('meta[name="viewport"]');
 	if (!hasViewport) {
 		__responsiveIssues.push("No viewport tag");
 	}
     
-    // 3 - check if content adapts to viewport width
+    // 4 - check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
     const mainWidth = mainContent ? mainContent.offsetWidth : 0;
     const windowWidth = window.innerWidth;
