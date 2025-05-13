@@ -220,15 +220,20 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		}
 	})
 
-	// navigate browser to url (and wait to settle)
+	// navigate browser to url
+	err = chromedp.Run(timeoutCtx, chromedp.Navigate(url))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
+	}
+
+	// wait for page to settle
 	err = chromedp.Run(
 		timeoutCtx,
-		chromedp.Navigate(url),
 		chromedp.WaitReady("body", chromedp.ByQuery),
 		chromedp.Sleep(5*time.Second), // precautionary to ensure LCP is calculated
 	)
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
+		return auditResult{}, fmt.Errorf("failed to wait for %s to load: %w", url, err)
 	}
 
 	// calculate largest contentful paint time
