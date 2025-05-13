@@ -270,7 +270,7 @@ const lcpScript = `(() => {
 
 // script to collect mobile responsiveness issues
 const responsiveScript = `(() => {
-	const responsiveIssues = [];
+	const __responsiveIssues = [];
 
     // 1 - check overflowing elements
     const els = Array.from(document.querySelectorAll("*"));
@@ -285,13 +285,13 @@ const responsiveScript = `(() => {
 		})
         .slice(0, 3)
 		.forEach(el => {
-			responsiveIssues.push("Overflowing element: " + el);
+			__responsiveIssues.push("Overflowing element: " + el);
 		});
     
     // 2 - check for viewport meta tag
     const hasViewport = !!document.querySelector('meta[name="viewport"]');
 	if (!hasViewport) {
-		responsiveIssues.push("No viewport tag");
+		__responsiveIssues.push("No viewport tag");
 	}
     
     // 3 - check if content adapts to viewport width
@@ -304,8 +304,8 @@ const responsiveScript = `(() => {
     // 90-100 percent of viewport on mobile (not fixed pixel width)
     const adaptiveLayout = widthRatio > 0.9;
 	if (!adaptiveLayout) {
-		responsiveIssues.push("Not adaptive layout");
+		__responsiveIssues.push("Not adaptive layout");
 	}
 
-	return responsiveIssues;
+	return __responsiveIssues;
 })()`
