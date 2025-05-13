@@ -20,6 +20,7 @@ type auditResult struct {
 	url              string
 	lcp              float64
 	consoleErrs      []string
+	requestErrs      []string
 	missingHeaders   []string
 	responsiveIssues []string
 }
@@ -203,7 +204,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 				)
 
 				resMutex.Lock()
-				result.consoleErrs = append(result.consoleErrs, errorInfo)
+				result.requestErrs = append(result.requestErrs, errorInfo)
 				resMutex.Unlock()
 			}
 		case *network.EventLoadingFailed:
@@ -215,7 +216,7 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 			)
 
 			resMutex.Lock()
-			result.consoleErrs = append(result.consoleErrs, errorInfo)
+			result.requestErrs = append(result.requestErrs, errorInfo)
 			resMutex.Unlock()
 		}
 	})
