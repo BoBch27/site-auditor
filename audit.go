@@ -74,16 +74,16 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
 	}
 
-	// inject console error collection script to run on all pages
+	// inject error collection script to run on all pages
 	err = chromedp.Run(
 		browserCtx,
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(consoleErrScript).Do(ctx)
+			_, err := page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
 			return err
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to inject console error script: %w", err)
+		return nil, fmt.Errorf("failed to inject error script: %w", err)
 	}
 
 	// emulate mobile device (iPhone)
@@ -182,17 +182,6 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 				result.requestErrs = append(result.requestErrs, errorInfo)
 				resMutex.Unlock()
 			}
-		case *network.EventLoadingFailed:
-			errorInfo := fmt.Sprintf(
-				"Request Failed: %s for %s (Reason: %s)",
-				msg.ErrorText,
-				msg.RequestID,
-				msg.Type,
-			)
-
-			resMutex.Lock()
-			result.requestErrs = append(result.requestErrs, errorInfo)
-			resMutex.Unlock()
 		}
 	})
 
@@ -230,6 +219,12 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to evaluate console errors for %s: %w", url, err)
 	}
 
+	// collect failed requests
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to evaluate request errors for %s: %w", url, err)
+	}
+
 	return result, nil
 }
 
@@ -255,15 +250,22 @@ const lcpScript = `(() => {
 	}).observe({ type: "largest-contentful-paint", buffered: true });
 })();`
 
-// script to capture console errors and warnings
-const consoleErrScript = `(() => {
+// script to capture console errors and warnings, and request errors
+const errScript = `(() => {
 	window.__console_errors = [];
+	window.__request_errors = [];
 
-	// capture JS errors
+	// capture request and JS errors
 	window.addEventListener('error', (e) => {
+		if (e.target && (e.target.src || e.target.href)) { // resource load error (img, script, link)
+			const message = (e.target.src || e.target.href) + " (type: " + e.target.tagName + ")";
+			window.__request_errors.push("[Resource Load Failed]: " + message);
+			return;
+		}
+
 		const message = e.message + " at " + e.filename + ":" + e.lineno + ":" + e.colno + " (" + e.error?.stack + ")";
 		window.__console_errors.push("[Uncaught Exception]: " + message);
-	});
+	}, true);
 	
 	// capture unhandled promise rejections
 	window.addEventListener('unhandledrejection', (e) => {
