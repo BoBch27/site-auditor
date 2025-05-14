@@ -273,6 +273,49 @@ const errScript = `(() => {
 		window.__console_errors.push("[Unhandled Promise Rejection]: " + message);
 	});
 	
+	// override fetch to capture request errors
+	const origFetch = fetch;
+	fetch = async function(...args) {
+		try {
+			const res = await origFetch.apply(this, args);
+			
+			if (res.status >= 400) {
+				const message = res.status + " for " + res.url;
+				window.__request_errors.push("[HTTP Error]: " + message);
+			}
+			
+			return res;
+		} catch (e) {
+		 	const message = e.message + " for " + (args ? args[0] : "");
+			window.__request_errors.push("[HTTP Error]: " + message);
+			throw e;
+		}
+	};
+
+	// override XMLHttpRequest to capture request errors
+	const origOpen = XMLHttpRequest.prototype.open;
+  	const origSend = XMLHttpRequest.prototype.send;
+  	XMLHttpRequest.prototype.open = function (method, url, async, user, password) {
+    	this.__requestUrl = url;
+    	return origOpen.apply(this, arguments);
+  	};
+ 	XMLHttpRequest.prototype.send = function (body) {
+    	const xhr = this;
+
+    	function logError() {
+			if (xhr.status >= 400 || xhr.status === 0) {
+				const message = xhr.status + " for " + xhr.__requestUrl;
+				window.__request_errors.push("[HTTP Error]: " + message);
+			}
+    	}
+
+		this.addEventListener("load", logError);
+		this.addEventListener("error", logError);
+		this.addEventListener("abort", logError);
+
+		return origSend.apply(this, arguments);
+	};
+
 	// override console.error to capture console errors
 	const originalConsoleError = console.error;
 	console.error = (...args) => {
