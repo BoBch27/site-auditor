@@ -223,16 +223,16 @@ const errScript = `(() => {
 	window.__console_errors = [];
 	window.__request_errors = [];
 
-	// capture request and JS errors
+	// capture resource and JS errors
 	window.addEventListener('error', (e) => {
-		if (e.target && (e.target.src || e.target.href)) { // resource load error (img, script, link)
+		if (e.target && (e.target.src || e.target.href)) {
 			const message = (e.target.src || e.target.href) + " (type: " + e.target.tagName + ")";
 			window.__request_errors.push("[Resource Load Failed]: " + message);
 			return;
 		}
 
 		const message = e.message + " at " + e.filename + ":" + e.lineno + ":" + e.colno + " (" + e.error?.stack + ")";
-		window.__console_errors.push("[Uncaught Exception]: " + message);
+		window.__console_errors.push("[Uncaught JS Error]: " + message);
 	}, true);
 	
 	// capture unhandled promise rejections
@@ -307,13 +307,13 @@ const errScript = `(() => {
 const responsiveScript = `(() => {
 	const __responsiveIssues = [];
 
-	// 1 - check for horizontal scrollbar
+	// check for horizontal scrollbar
 	const horizontalBar = document.body.scrollWidth > window.innerWidth;
 	if (horizontalBar) {
 		__responsiveIssues.push("Has horizontal scrollbar");
 	}
 
-    // 2 - check overflowing elements
+    // check overflowing elements
     const els = Array.from(document.querySelectorAll("*"));
     const overflowingEls = els
         .filter(el => el.scrollWidth > el.clientWidth + 5)
@@ -329,13 +329,13 @@ const responsiveScript = `(() => {
 			__responsiveIssues.push("Overflowing element: " + el);
 		});
     
-    // 3 - check for viewport meta tag
+    // check for viewport meta tag
     const hasViewport = !!document.querySelector('meta[name="viewport"]');
 	if (!hasViewport) {
 		__responsiveIssues.push("No viewport tag");
 	}
     
-    // 4 - check if content adapts to viewport width
+    // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
     const mainWidth = mainContent ? mainContent.offsetWidth : 0;
     const windowWidth = window.innerWidth;
