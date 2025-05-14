@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -54,7 +52,6 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	// enable additional chromedp domains
 	err = chromedp.Run(
 		browserCtx,
-		runtime.Enable(),
 		network.Enable(),
 		page.Enable(),
 	)
@@ -119,8 +116,6 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 // before returning an audit result
 func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 	result := auditResult{url: url}
-	var resMutex sync.Mutex
-	var headerChecked bool
 
 	// set context timeout
 	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
@@ -140,55 +135,28 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to clear browser cache and cookies: %w", err)
 	}
 
-	// subscribe and listen to target events
-	chromedp.ListenTarget(timeoutCtx, func(ev interface{}) {
-		switch msg := ev.(type) {
-		case *network.EventResponseReceived:
-			// only check headers for main document/page response
-			if msg.Type == network.ResourceTypeDocument {
-				if headerChecked {
-					return
-				}
-
-				headerChecked = true
-
-				for _, header := range securityHeaders {
-					found := false
-
-					// headers in chromedp are case-insensitive, but we need to check different formats
-					for key := range msg.Response.Headers {
-						if strings.EqualFold(key, header) {
-							found = true
-							break
-						}
-					}
-
-					if !found {
-						resMutex.Lock()
-						result.missingHeaders = append(result.missingHeaders, header)
-						resMutex.Unlock()
-					}
-				}
-			}
-
-			if msg.Response.Status >= 400 {
-				errorInfo := fmt.Sprintf(
-					"HTTP Error: %d for %s",
-					msg.Response.Status,
-					msg.Response.URL,
-				)
-
-				resMutex.Lock()
-				result.requestErrs = append(result.requestErrs, errorInfo)
-				resMutex.Unlock()
-			}
-		}
-	})
-
 	// navigate browser to url
-	err = chromedp.Run(timeoutCtx, chromedp.Navigate(url))
+	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.Navigate(url))
 	if err != nil {
 		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
+	}
+
+	// check for missing security headers
+	for _, header := range securityHeaders {
+		found := false
+		for key := range nr.Headers {
+			if strings.EqualFold(key, header) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result.missingHeaders = append(result.missingHeaders, header)
+		}
+	}
+	if nr.Status >= 400 {
+		errMssg := fmt.Sprintf("HTTP Error: %d for %s", nr.Status, nr.URL)
+		result.requestErrs = append(result.requestErrs, errMssg)
 	}
 
 	// wait for page to settle
