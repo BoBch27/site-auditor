@@ -21,6 +21,7 @@ type auditResult struct {
 	requestErrs      []string
 	missingHeaders   []string
 	responsiveIssues []string
+	formIssues       []string
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -195,6 +196,12 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to evaluate request errors for %s: %w", url, err)
 	}
 
+	// capture form issues
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(formValidationScript, &result.formIssues))
+	if err != nil {
+		return auditResult{}, fmt.Errorf("failed to evaluate form issues for %s: %w", url, err)
+	}
+
 	return result, nil
 }
 
@@ -354,3 +361,131 @@ const responsiveScript = `(() => {
 
 	return __responsiveIssues;
 })()`
+
+// script to collect form issues
+const formValidationScript = `(() => {
+    const __formIssues = [];
+    
+    // iterate over all forms in the document
+    document.querySelectorAll('form').forEach((form, formIndex) => {
+        const formSelector = form.id ? 
+            'form#' + form.id : 
+            'form:nth-of-type(' + (formIndex + 1) + ')';
+        
+        // check for form action and method
+        const formAction = form.getAttribute('action') || form.getAttribute('onsubmit');
+        const formMethod = (form.getAttribute('method') || 'get').toLowerCase();
+		const hasJsAttr = (form.hasAttribute('data-action') || form.hasAttribute('ng-submit') || 
+			form.hasAttribute('v-on:submit') || form.hasAttribute('@submit'));
+		const hasHtmxAttr = (form.hasAttribute("hx-get") || form.hasAttribute("hx-post") || 
+			form.hasAttribute("hx-put") || form.hasAttribute("hx-patch") || form.hasAttribute("hx-delete"));
+        
+        if (!formAction && !hasJsAttr && !hasHtmxAttr) {
+            __formIssues.push(formSelector + " is missing action attribute or JavaScript submit handler");
+        }
+        
+        // check GET vs POST usage
+        const hasFileInput = !!form.querySelector('input[type="file"]');
+        const hasPasswordInput = !!form.querySelector('input[type="password"]');
+        const hasLargeTextarea = Array.from(form.querySelectorAll('textarea'))
+            .some(textarea => textarea.value.length > 2000);
+            
+        // forms with files, passwords, or large data should use POST
+        if (formMethod === 'get' && (hasFileInput || hasPasswordInput || hasLargeTextarea)) {
+			__formIssues.push(formSelector + " should use POST method for sensitive or large data submission");
+        }
+
+		// check for proper enctype for file uploads
+		if (hasFileInput && form.getAttribute('enctype') !== 'multipart/form-data') {
+			__formIssues.push(formSelector + " is missing proper enctype='multipart/form-data'");
+		}
+        
+        // check for CSRF protection on non-GET forms
+        if (formMethod !== 'get') {
+            const possibleCsrfTokens = form.querySelectorAll('input[name*="csrf"], input[name*="token"], input[name="_token"], input[name="authenticity_token"]');
+            if (possibleCsrfTokens.length === 0) {
+				__formIssues.push(
+					formSelector + " uses " + formMethod.toUpperCase() + " but appears to be missing CSRF protection"
+				);
+            }
+        }
+        
+        // check if form has a submit button
+        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"]');
+        if (!hasSubmitButton) {
+			__formIssues.push(formSelector + " is missing a submit button");
+        }
+
+		// check for duplicate IDs within the form
+		const idMap = new Map();
+		Array.from(form.querySelectorAll('[id]')).forEach(el => {
+			const id = el.id;
+			if (idMap.has(id)) {
+				__formIssues.push(formSelector + " has duplicate IDs (" + id + ")");
+			} else {
+				idMap.set(id, true);
+			}
+		});
+        
+        // find all input elements excluding hidden and submit types
+        const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea');
+        inputs.forEach((input, inputIndex) => {
+			const tag = input.tagName.toLowerCase()
+            const inputSelector = input.id ? tag + '#' + input.id : 
+                input.name ? 
+                    tag + '[name="' + input.name + '"]' : 
+                    tag + ':nth-of-type(' + (inputIndex + 1) + ')';
+            
+            // check for label association
+            const hasLabel = input.id ? 
+                !!document.querySelector('label[for="' + input.id + '"]') : 
+                input.closest('label') !== null;
+            if (!hasLabel) {
+				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks associated label");
+            }
+            
+            // check for name attribute (crucial for form submission)
+            if (!input.name && input.type !== 'button' && input.type !== 'submit') {
+				__formIssues.push(
+					inputSelector + " (in " + formSelector + ") is missing name attribute (required for form submission)"
+				);
+            }
+            
+            // check for accessibility attributes
+            if (!input.getAttribute('aria-label') && !input.getAttribute('aria-labelledby') && !hasLabel) {
+				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks accessible name");
+            }
+            
+            // password field specific checks
+            if (input.type === 'password') {
+                // check if form is served over HTTPS (simple check, more robust would be via headers)
+                if (window.location.protocol !== 'https:') {
+					__formIssues.push(
+						inputSelector + " (in " + formSelector + ") is a password field not served over HTTPS"
+					);
+                }
+            }
+
+			// check for required fields without validation
+			if (input.required) {
+				const hasValidation = (
+					input.hasAttribute('pattern') || 
+					input.hasAttribute('min') || 
+					input.hasAttribute('max') ||
+					input.hasAttribute('minlength') || 
+					input.hasAttribute('maxlength') ||
+					input.type === 'email' ||
+					input.type === 'url' ||
+					input.type === 'number' ||
+					input.type === 'date'
+				);
+
+				if (!hasValidation && input.type === 'text') {
+					__formIssues.push(inputSelector + " (in " + formSelector + ") has no validation");
+				}
+			}
+        });
+    });
+    
+    return __formIssues;
+})();`
