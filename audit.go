@@ -208,7 +208,7 @@ var securityHeaders = []string{
 	"Referrer-Policy",
 }
 
-// script to collect LCP in the browser
+// script to collect LCP time
 const lcpScript = `(() => {
 	window.__lcp = 0;
 	
