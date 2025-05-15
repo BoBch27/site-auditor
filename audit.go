@@ -319,12 +319,14 @@ const responsiveScript = `(() => {
     const els = Array.from(document.querySelectorAll("*"));
     const overflowingEls = els
         .filter(el => el.scrollWidth > el.clientWidth + 5)
-        .map(el => {
-			const tag = "tag: " + el.tagName + "; ";
-			const id = "id: " + el.id + "; ";
-			const className = "class: " + el.className + "; ";
-			const overflow = "overflow: " + (el.scrollWidth - el.clientWidth).toString();
-			return tag + id + className + overflow;
+        .map((el, index) => {
+			const overflow = (el.scrollWidth - el.clientWidth).toString();
+			const tag = el.tagName.toLowerCase();
+			const selector = el.id ? (tag + '#' + el.id) : 
+				el.className ? (tag + '.' + el.className) : 
+				(tag + ':nth-of-type(' + (index + 1) + ')');
+
+			return selector + " (overflow: " + overflow + ")";
 		})
         .slice(0, 3)
 		.forEach(el => {
