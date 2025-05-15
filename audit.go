@@ -141,6 +141,12 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
 	}
 
+	// check if main document request failed
+	if nr.Status >= 400 {
+		errMssg := fmt.Sprintf("[HTTP Error]: %d for %s", nr.Status, nr.URL)
+		result.requestErrs = append(result.requestErrs, errMssg)
+	}
+
 	// check for missing security headers
 	for _, header := range securityHeaders {
 		found := false
@@ -153,10 +159,6 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		if !found {
 			result.missingHeaders = append(result.missingHeaders, header)
 		}
-	}
-	if nr.Status >= 400 {
-		errMssg := fmt.Sprintf("HTTP Error: %d for %s", nr.Status, nr.URL)
-		result.requestErrs = append(result.requestErrs, errMssg)
 	}
 
 	// wait for page to settle
