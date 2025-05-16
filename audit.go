@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -22,6 +21,7 @@ type auditResult struct {
 	missingHeaders   []string
 	responsiveIssues []string
 	formIssues       []string
+	auditErrs        []string
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
@@ -97,25 +97,20 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 
 	urlsNo := len(urls)
 	results := make([]auditResult, urlsNo)
-	var errs []error
 
 	for i, url := range urls {
 		// audit each website
 		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		res, err := auditWebsite(browserCtx, url)
+		results[i] = auditWebsite(browserCtx, url)
 
-		results[i] = res
-		if err != nil {
-			errs = append(errs, err)
-		}
 	}
 
-	return results, errors.Join(errs...)
+	return results, nil
 }
 
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, url string) (auditResult, error) {
+func auditWebsite(ctx context.Context, url string) auditResult {
 	result := auditResult{url: url}
 
 	// set context timeout
@@ -133,19 +128,30 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		return err
 	}))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to clear browser cache and cookies: %w", err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to clear browser cache and cookies: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// navigate browser to url
 	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.Navigate(url))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to navigate to %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to navigate: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// check if main document request failed
 	if nr.Status >= 400 {
 		errMssg := fmt.Sprintf("[HTTP Error]: %d for %s", nr.Status, nr.URL)
 		result.requestErrs = append(result.requestErrs, errMssg)
+		return result
 	}
 
 	// check for missing security headers
@@ -169,40 +175,70 @@ func auditWebsite(ctx context.Context, url string) (auditResult, error) {
 		chromedp.Sleep(5*time.Second), // precautionary to ensure LCP is calculated
 	)
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to wait for %s to load: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to wait to load: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// calculate largest contentful paint time
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__lcp || 0`, &result.lcp))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to evaluate LCP for %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to evaluate LCP: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// capture mobile responsiveness issues
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(responsiveScript, &result.responsiveIssues))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to evaluate website responsiveness for %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to evaluate mobile responsiveness: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// collect console errors and warnings
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to evaluate console errors for %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to evaluate console errors: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// collect failed requests
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to evaluate request errors for %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to evaluate request errors: %s", err.Error()),
+		)
+
+		return result
 	}
 
 	// capture form issues
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(formValidationScript, &result.formIssues))
 	if err != nil {
-		return auditResult{}, fmt.Errorf("failed to evaluate form issues for %s: %w", url, err)
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to evaluate form issues: %s", err.Error()),
+		)
+
+		return result
 	}
 
-	return result, nil
+	return result
 }
 
 // important security headers to check
