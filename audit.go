@@ -146,11 +146,12 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 
 		return result
 	}
+	if nr.Status >= 400 { // if main document request failed
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to navigate: HTTP Status - %d", nr.Status),
+		)
 
-	// check if main document request failed
-	if nr.Status >= 400 {
-		errMssg := fmt.Sprintf("[HTTP Error]: %d for %s", nr.Status, nr.URL)
-		result.requestErrs = append(result.requestErrs, errMssg)
 		return result
 	}
 
