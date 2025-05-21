@@ -48,6 +48,12 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to initialise browser: %w", err)
 	}
 
+	// wait for browser to initialise
+	err = chromedp.Run(browserCtx, chromedp.Sleep(1*time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("failed to wait for browser initialisation: %w", err)
+	}
+
 	// enable additional chromedp domains
 	err = chromedp.Run(
 		browserCtx,
