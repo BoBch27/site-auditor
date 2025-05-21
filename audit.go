@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -41,7 +40,7 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	defer cancelAlloc()
 
 	// create browser context
-	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
+	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
 	defer cancelBrowser()
 
 	// open headless browser with a blank page
