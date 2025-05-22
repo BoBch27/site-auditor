@@ -32,6 +32,9 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-cache", true),
+		chromedp.Flag("disable-background-networking", true),
+		chromedp.Flag("metrics-recording-only", true),
+		chromedp.Flag("disable-features", "PreloadMediaEngagementData,PreloadMediaEngagementData2,SpeculativePreconnect,NoStatePrefetch"),
 	)
 
 	// create context with ExecAllocator
