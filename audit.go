@@ -80,8 +80,30 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	timeoutCtx, cancelTimeout := context.WithTimeout(windowCtx, 60*time.Second)
 	defer cancelTimeout()
 
+	// open window with blank page
+	err := chromedp.Run(timeoutCtx, chromedp.Navigate("about:blank"))
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to initialise window: %s", err.Error()),
+		)
+
+		return result
+	}
+
+	// wait for window to initialise
+	err = chromedp.Run(timeoutCtx, chromedp.Sleep(1*time.Second))
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to wait for window initialisation: %s", err.Error()),
+		)
+
+		return result
+	}
+
 	// enable additional chromedp domains
-	err := chromedp.Run(
+	err = chromedp.Run(
 		timeoutCtx,
 		network.Enable(),
 		page.Enable(),
