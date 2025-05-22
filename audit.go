@@ -54,51 +54,6 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 		return nil, fmt.Errorf("failed to wait for browser initialisation: %w", err)
 	}
 
-	// enable additional chromedp domains
-	err = chromedp.Run(
-		browserCtx,
-		network.Enable(),
-		page.Enable(),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to enable additional domains: %w", err)
-	}
-
-	// inject LCP observer to run on all pages
-	err = chromedp.Run(
-		browserCtx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
-			return err
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to inject LCP script: %w", err)
-	}
-
-	// inject error collection script to run on all pages
-	err = chromedp.Run(
-		browserCtx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
-			return err
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to inject error script: %w", err)
-	}
-
-	// emulate mobile device (iPhone)
-	err = chromedp.Run(
-		browserCtx,
-		emulation.SetUserAgentOverride("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"),
-		emulation.SetDeviceMetricsOverride(375, 667, 2.0, true),
-		emulation.SetTouchEmulationEnabled(true),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to emulate mobile device: %w", err)
-	}
-
 	urlsNo := len(urls)
 	results := make([]auditResult, urlsNo)
 
@@ -117,12 +72,81 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 func auditWebsite(ctx context.Context, url string) auditResult {
 	result := auditResult{url: url}
 
+	// create new window context
+	windowCtx, cancelWindow := chromedp.NewContext(ctx)
+	defer cancelWindow()
+
 	// set context timeout
-	timeoutCtx, cancelTimeout := context.WithTimeout(ctx, 60*time.Second)
+	timeoutCtx, cancelTimeout := context.WithTimeout(windowCtx, 60*time.Second)
 	defer cancelTimeout()
 
+	// enable additional chromedp domains
+	err := chromedp.Run(
+		timeoutCtx,
+		network.Enable(),
+		page.Enable(),
+	)
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to enable additional domains: %s", err.Error()),
+		)
+
+		return result
+	}
+
+	// inject LCP observer to run on page
+	err = chromedp.Run(
+		timeoutCtx,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
+			return err
+		}),
+	)
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to inject LCP script: %s", err.Error()),
+		)
+
+		return result
+	}
+
+	// inject error collection script to run on page
+	err = chromedp.Run(
+		timeoutCtx,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			_, err := page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
+			return err
+		}),
+	)
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to inject error script: %s", err.Error()),
+		)
+
+		return result
+	}
+
+	// emulate mobile device (iPhone)
+	err = chromedp.Run(
+		timeoutCtx,
+		emulation.SetUserAgentOverride("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"),
+		emulation.SetDeviceMetricsOverride(375, 667, 2.0, true),
+		emulation.SetTouchEmulationEnabled(true),
+	)
+	if err != nil {
+		result.auditErrs = append(
+			result.auditErrs,
+			fmt.Sprintf("failed to emulate mobile device: %s", err.Error()),
+		)
+
+		return result
+	}
+
 	// clear network cache and cookies before each run
-	err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+	err = chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
 		err := network.ClearBrowserCache().Do(ctx)
 		if err != nil {
 			return err
