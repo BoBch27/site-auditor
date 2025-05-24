@@ -226,7 +226,7 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	err = chromedp.Run(
 		timeoutCtx,
 		chromedp.WaitReady("body", chromedp.ByQuery),
-		chromedp.Sleep(5*time.Second), // precautionary to ensure LCP is calculated
+		waitNetworkIdle(500*time.Millisecond, 30*time.Second),
 	)
 	if err != nil {
 		result.auditErrs = append(
@@ -293,6 +293,83 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	}
 
 	return result
+}
+
+// waitNetworkIdle returns a chromedp.Action that waits until network is idle,
+// similar to Puppeteer's "networkidle0".
+func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		activeRequests := make(map[network.RequestID]string)
+		idleTimer := time.NewTimer(idleTime)
+		idleTimer.Stop()
+		staticSiteTimer := time.NewTimer(1 * time.Second) // short timer for static site detection
+
+		// common domains to ignore (analytics, tracking, favicons)
+		ignored := []string{
+			"google-analytics.com", "googletagmanager.com", "doubleclick.net",
+			"facebook.net", "hotjar.com", "favicon.ico", "google.com/gen_204",
+			"amazon-adsystem.com", "googlesyndication.com", "adsystem.amazon",
+			"facebook.com/tr", "linkedin.com/px", "twitter.com/i/adsct",
+			"pinterest.com/ct", "tiktok.com/i18n", "snapchat.com/p",
+			"analytics", "tracking", "metrics", "telemetry", "audioeye",
+			"interactions", "events", "status",
+		}
+		isIgnored := func(url string) bool {
+			urlLower := strings.ToLower(url)
+			for _, domain := range ignored {
+				if strings.Contains(urlLower, domain) {
+					return true
+				}
+			}
+			return false
+		}
+
+		chromedp.ListenTarget(ctx, func(ev interface{}) {
+			switch ev := ev.(type) {
+			case *network.EventRequestWillBeSent:
+				if !isIgnored(ev.Request.URL) &&
+					ev.Type != network.ResourceTypeOther &&
+					ev.Type != network.ResourceTypePing &&
+					ev.Type != network.ResourceTypeWebSocket &&
+					ev.Type != network.ResourceTypeEventSource {
+					staticSiteTimer.Stop() // we have requests - not a static site
+					activeRequests[ev.RequestID] = ev.Request.URL
+					idleTimer.Stop()
+				}
+			case *network.EventLoadingFinished:
+				if _, ok := activeRequests[ev.RequestID]; ok {
+					delete(activeRequests, ev.RequestID)
+					if len(activeRequests) == 0 {
+						idleTimer.Reset(idleTime)
+					}
+				}
+			case *network.EventLoadingFailed:
+				if _, ok := activeRequests[ev.RequestID]; ok {
+					delete(activeRequests, ev.RequestID)
+					if len(activeRequests) == 0 {
+						idleTimer.Reset(idleTime)
+					}
+				}
+			}
+		})
+
+		timeout := time.NewTimer(maxWait)
+		defer timeout.Stop()
+		defer idleTimer.Stop()
+		defer staticSiteTimer.Stop()
+
+		select {
+		case <-idleTimer.C:
+			return nil // network became idle
+		case <-staticSiteTimer.C:
+			// likely a static site - wait for DOM to be ready
+			return chromedp.WaitReady("body", chromedp.ByQuery).Do(ctx)
+		case <-timeout.C:
+			return context.DeadlineExceeded
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
 }
 
 // important security headers to check
