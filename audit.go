@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -229,12 +230,20 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 		waitNetworkIdle(500*time.Millisecond, 30*time.Second),
 	)
 	if err != nil {
+		// return early if the error's not due to a timeout
+		if !errors.Is(err, context.DeadlineExceeded) {
+			result.auditErrs = append(
+				result.auditErrs,
+				fmt.Sprintf("failed to wait to load: %s", err.Error()),
+			)
+
+			return result
+		}
+
 		result.auditErrs = append(
 			result.auditErrs,
-			fmt.Sprintf("failed to wait to load: %s", err.Error()),
+			"[warning]: page didn't become idle before timeout",
 		)
-
-		return result
 	}
 
 	// calculate largest contentful paint time
