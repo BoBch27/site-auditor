@@ -209,20 +209,6 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 		return result
 	}
 
-	// check for missing security headers
-	for _, header := range securityHeaders {
-		found := false
-		for key := range nr.Headers {
-			if strings.EqualFold(key, header) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			result.missingHeaders = append(result.missingHeaders, header)
-		}
-	}
-
 	// wait for page to settle
 	err = chromedp.Run(
 		timeoutCtx,
@@ -245,6 +231,9 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 			"[warning]: page didn't become idle before timeout",
 		)
 	}
+
+	// capture missing security headers
+	result.requestErrs = checkSecurityHeaders(nr.Headers)
 
 	// calculate largest contentful paint time
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__lcp || 0`, &result.lcp))
@@ -302,6 +291,39 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	}
 
 	return result
+}
+
+// important security headers to check
+var securityHeaders = []string{
+	"Content-Security-Policy",
+	"Strict-Transport-Security",
+	"X-Content-Type-Options",
+	"X-Frame-Options",
+	"Permissions-Policy",
+	"Referrer-Policy",
+}
+
+// checkSecurityHeaders looks for missing security headers from
+// the page's main document request
+func checkSecurityHeaders(resHeaders network.Headers) []string {
+	missingHeaders := []string{}
+
+	for _, header := range securityHeaders {
+		found := false
+
+		for key := range resHeaders {
+			if strings.EqualFold(key, header) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			missingHeaders = append(missingHeaders, header)
+		}
+	}
+
+	return missingHeaders
 }
 
 // waitNetworkIdle returns a chromedp.Action that waits until network is idle,
@@ -394,16 +416,6 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 			return ctx.Err()
 		}
 	})
-}
-
-// important security headers to check
-var securityHeaders = []string{
-	"Content-Security-Policy",
-	"Strict-Transport-Security",
-	"X-Content-Type-Options",
-	"X-Frame-Options",
-	"Permissions-Policy",
-	"Referrer-Policy",
 }
 
 // script to collect LCP time
