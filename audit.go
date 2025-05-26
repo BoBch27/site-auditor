@@ -316,6 +316,17 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 		}
 		isIgnored := func(url string) bool {
 			urlLower := strings.ToLower(url)
+
+			// (web workers, service workers, generated content, etc.)
+			if strings.HasPrefix(urlLower, "blob:") {
+				return true
+			}
+
+			// (inline content)
+			if strings.HasPrefix(urlLower, "data:") {
+				return true
+			}
+
 			for _, domain := range ignored {
 				if strings.Contains(urlLower, domain) {
 					return true
