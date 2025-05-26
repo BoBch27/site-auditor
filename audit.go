@@ -304,15 +304,19 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 		idleTimer.Stop()
 		staticSiteTimer := time.NewTimer(1 * time.Second) // short timer for static site detection
 
-		// common domains to ignore (analytics, tracking, favicons)
+		// common domains to ignore (analytics, tracking, chats, favicons)
 		ignored := []string{
 			"google-analytics.com", "googletagmanager.com", "doubleclick.net",
 			"facebook.net", "hotjar.com", "favicon.ico", "google.com/gen_204",
 			"amazon-adsystem.com", "googlesyndication.com", "adsystem.amazon",
 			"facebook.com/tr", "linkedin.com/px", "twitter.com/i/adsct",
 			"pinterest.com/ct", "tiktok.com/i18n", "snapchat.com/p",
-			"analytics", "tracking", "metrics", "telemetry", "audioeye",
-			"interactions", "events", "status",
+			"scorecardresearch.com", "newrelic.com", "cloudflareinsights.com",
+			"segment.io", "sentry.io", "monorail-edge.shopify.com",
+			"shopifycloud.com", "intercom.io", "zendesk.com", "drift.com",
+			"crisp.chat", "tawk.to", "livechat.com", "freshchat.com",
+			"helpscout.net", "olark.com", "liveperson.net", "pusher.com",
+			"analytics", "telemetry",
 		}
 		isIgnored := func(url string) bool {
 			urlLower := strings.ToLower(url)
