@@ -227,7 +227,7 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	err = chromedp.Run(
 		timeoutCtx,
 		chromedp.WaitReady("body", chromedp.ByQuery),
-		waitNetworkIdle(500*time.Millisecond, 30*time.Second),
+		waitNetworkIdle(500*time.Millisecond, 10*time.Second),
 	)
 	if err != nil {
 		// return early if the error's not due to a timeout
