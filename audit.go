@@ -335,49 +335,10 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 		idleTimer.Stop()
 		staticSiteTimer := time.NewTimer(1 * time.Second) // short timer for static site detection
 
-		// common domains to ignore (analytics, tracking, chats, favicons)
-		ignored := []string{
-			"google-analytics.com", "googletagmanager.com", "doubleclick.net",
-			"facebook.net", "hotjar.com", "favicon.ico", "google.com/gen_204",
-			"amazon-adsystem.com", "googlesyndication.com", "adsystem.amazon",
-			"facebook.com/tr", "linkedin.com/px", "twitter.com/i/adsct",
-			"pinterest.com/ct", "tiktok.com/i18n", "snapchat.com/p",
-			"scorecardresearch.com", "newrelic.com", "cloudflareinsights.com",
-			"segment.io", "sentry.io", "monorail-edge.shopify.com",
-			"shopifycloud.com", "intercom.io", "zendesk.com", "drift.com",
-			"crisp.chat", "tawk.to", "livechat.com", "freshchat.com",
-			"helpscout.net", "olark.com", "liveperson.net", "pusher.com",
-			"analytics", "telemetry",
-		}
-		isIgnored := func(url string) bool {
-			urlLower := strings.ToLower(url)
-
-			// (web workers, service workers, generated content, etc.)
-			if strings.HasPrefix(urlLower, "blob:") {
-				return true
-			}
-
-			// (inline content)
-			if strings.HasPrefix(urlLower, "data:") {
-				return true
-			}
-
-			for _, domain := range ignored {
-				if strings.Contains(urlLower, domain) {
-					return true
-				}
-			}
-			return false
-		}
-
 		chromedp.ListenTarget(ctx, func(ev interface{}) {
 			switch ev := ev.(type) {
 			case *network.EventRequestWillBeSent:
-				if !isIgnored(ev.Request.URL) &&
-					ev.Type != network.ResourceTypeOther &&
-					ev.Type != network.ResourceTypePing &&
-					ev.Type != network.ResourceTypeWebSocket &&
-					ev.Type != network.ResourceTypeEventSource {
+				if !isIgnoredURL(ev.Request.URL) {
 					staticSiteTimer.Stop() // we have requests - not a static site
 					activeRequests[ev.RequestID] = ev.Request.URL
 					idleTimer.Stop()
@@ -416,6 +377,46 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 			return ctx.Err()
 		}
 	})
+}
+
+// domains to ignore (analytics, tracking, chats, favicons)
+var ignoredDomains = []string{
+	"google-analytics.com", "googletagmanager.com", "doubleclick.net",
+	"facebook.net", "hotjar.com", "favicon.ico", "google.com/gen_204",
+	"amazon-adsystem.com", "googlesyndication.com", "adsystem.amazon",
+	"facebook.com/tr", "linkedin.com/px", "twitter.com/i/adsct",
+	"pinterest.com/ct", "tiktok.com/i18n", "snapchat.com/p",
+	"scorecardresearch.com", "newrelic.com", "cloudflareinsights.com",
+	"segment.io", "sentry.io", "monorail-edge.shopify.com",
+	"shopifycloud.com", "intercom.io", "zendesk.com", "drift.com",
+	"crisp.chat", "tawk.to", "livechat.com", "freshchat.com",
+	"helpscout.net", "olark.com", "liveperson.net", "pusher.com",
+	"analytics", "telemetry",
+}
+
+// isIgnoredURL checks if the given URL contains one of the above domains
+// and patterns to helps avoid waiting on analytics, tracking, and
+// non-critical resources
+func isIgnoredURL(url string) bool {
+	urlLower := strings.ToLower(url)
+
+	// (web workers, service workers, generated content, etc.)
+	if strings.HasPrefix(urlLower, "blob:") {
+		return true
+	}
+
+	// (inline content)
+	if strings.HasPrefix(urlLower, "data:") {
+		return true
+	}
+
+	for _, domain := range ignoredDomains {
+		if strings.Contains(urlLower, domain) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // script to collect LCP time
