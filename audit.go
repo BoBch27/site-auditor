@@ -46,16 +46,23 @@ func auditWebsites(ctx context.Context, urls []string) ([]auditResult, error) {
 	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
 	defer cancelBrowser()
 
-	// open headless browser with a blank page
-	err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialise browser: %w", err)
-	}
+	// open browser with a blank page and wait to initialise,
+	// done so performance metrics aren’t skewed by cold start overhead
+	err := chromedp.Run(browserCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := chromedp.Navigate("about:blank").Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to initialise browser: %w", err)
+		}
 
-	// wait for browser to initialise
-	err = chromedp.Run(browserCtx, chromedp.Sleep(1*time.Second))
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to wait for browser initialisation: %w", err)
+		}
+
+		return nil
+	}))
 	if err != nil {
-		return nil, fmt.Errorf("failed to wait for browser initialisation: %w", err)
+		return nil, err
 	}
 
 	urlsNo := len(urls)
@@ -84,74 +91,47 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	timeoutCtx, cancelTimeout := context.WithTimeout(windowCtx, 60*time.Second)
 	defer cancelTimeout()
 
-	// open window with blank page
-	err := chromedp.Run(timeoutCtx, chromedp.Navigate("about:blank"))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to initialise window: %s", err.Error()),
-		)
+	// open window with blank page and wait to initialise,
+	// done so performance metrics aren’t skewed by cold start overhead
+	err := chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := chromedp.Navigate("about:blank").Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to initialise window: %w", err)
+		}
 
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to wait for window initialisation: %w", err)
+		}
+
+		return nil
+	}))
+	if err != nil {
+		result.auditErrs = append(result.auditErrs, err.Error())
 		return result
 	}
 
-	// wait for window to initialise
-	err = chromedp.Run(timeoutCtx, chromedp.Sleep(1*time.Second))
+	// enable page domain and inject JS scripts to run on page
+	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := page.Enable().Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to enable page domain: %w", err)
+		}
+
+		_, err = page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to inject LCP script: %w", err)
+		}
+
+		_, err = page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to inject error script: %w", err)
+		}
+
+		return nil
+	}))
 	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to wait for window initialisation: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// enable additional chromedp domains
-	err = chromedp.Run(
-		timeoutCtx,
-		network.Enable(),
-		page.Enable(),
-	)
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to enable additional domains: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// inject LCP observer to run on page
-	err = chromedp.Run(
-		timeoutCtx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
-			return err
-		}),
-	)
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to inject LCP script: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// inject error collection script to run on page
-	err = chromedp.Run(
-		timeoutCtx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			_, err := page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
-			return err
-		}),
-	)
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to inject error script: %s", err.Error()),
-		)
-
+		result.auditErrs = append(result.auditErrs, err.Error())
 		return result
 	}
 
@@ -171,33 +151,56 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 		return result
 	}
 
-	// clear network cache and cookies before each run
+	// enable network domain, and clear cache and cookies
 	err = chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-		err := network.ClearBrowserCache().Do(ctx)
+		err := network.Enable().Do(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to enable network domain: %w", err)
+		}
+
+		err = network.ClearBrowserCache().Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to clear browser cache: %w", err)
 		}
 
 		err = network.ClearBrowserCookies().Do(ctx)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to clear browser cookies: %w", err)
+		}
+
+		return nil
 	}))
 	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to clear browser cache and cookies: %s", err.Error()),
-		)
-
+		result.auditErrs = append(result.auditErrs, err.Error())
 		return result
 	}
 
-	// navigate browser to url
-	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.Navigate(url))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to navigate: %s", err.Error()),
-		)
+	// navigate to url and wait to settle
+	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := chromedp.Navigate(url).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to navigate: %w", err)
+		}
 
+		err = chromedp.WaitReady("body", chromedp.ByQuery).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to wait for \"body\": %w", err)
+		}
+
+		err = waitNetworkIdle(500*time.Millisecond, 10*time.Second).Do(ctx)
+		if err != nil {
+			// don't return error if check has timed out
+			if !errors.Is(err, context.DeadlineExceeded) {
+				return fmt.Errorf("failed to wait for page to be idle: %w", err)
+			}
+
+			fmt.Println("[warning]: page's idle check timed out")
+		}
+
+		return nil
+	}))
+	if err != nil {
+		result.auditErrs = append(result.auditErrs, err.Error())
 		return result
 	}
 	if nr.Status >= 400 { // if main document request failed
@@ -209,84 +212,45 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 		return result
 	}
 
-	// wait for page to settle
-	err = chromedp.Run(
-		timeoutCtx,
-		chromedp.WaitReady("body", chromedp.ByQuery),
-		waitNetworkIdle(500*time.Millisecond, 10*time.Second),
-	)
-	if err != nil {
-		// return early if the error's not due to a timeout
-		if !errors.Is(err, context.DeadlineExceeded) {
-			result.auditErrs = append(
-				result.auditErrs,
-				fmt.Sprintf("failed to wait to load: %s", err.Error()),
-			)
-
-			return result
-		}
-
-		result.auditErrs = append(
-			result.auditErrs,
-			"[warning]: page didn't become idle before timeout",
-		)
-	}
-
 	// capture missing security headers
 	result.requestErrs = checkSecurityHeaders(nr.Headers)
 
-	// calculate largest contentful paint time
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__lcp || 0`, &result.lcp))
+	// perform checks
+	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		// calculate largest contentful paint time
+		err := chromedp.Evaluate(`window.__lcp || 0`, &result.lcp).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to evaluate LCP: %w", err)
+		}
+
+		// capture mobile responsiveness issues
+		err = chromedp.Evaluate(responsiveScript, &result.responsiveIssues).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to evaluate mobile responsiveness: %w", err)
+		}
+
+		// collect console errors and warnings
+		err = chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to evaluate console errors: %w", err)
+		}
+
+		// collect failed requests
+		err = chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to evaluate request errors: %w", err)
+		}
+
+		// capture form issues
+		err = chromedp.Evaluate(formValidationScript, &result.formIssues).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to evaluate form issues: %w", err)
+		}
+
+		return nil
+	}))
 	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to evaluate LCP: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// capture mobile responsiveness issues
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(responsiveScript, &result.responsiveIssues))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to evaluate mobile responsiveness: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// collect console errors and warnings
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to evaluate console errors: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// collect failed requests
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to evaluate request errors: %s", err.Error()),
-		)
-
-		return result
-	}
-
-	// capture form issues
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(formValidationScript, &result.formIssues))
-	if err != nil {
-		result.auditErrs = append(
-			result.auditErrs,
-			fmt.Sprintf("failed to evaluate form issues: %s", err.Error()),
-		)
-
+		result.auditErrs = append(result.auditErrs, err.Error())
 		return result
 	}
 
