@@ -1,0 +1,276 @@
+package main
+
+// script to collect LCP time
+const lcpScript = `(() => {
+	window.__lcp = 0;
+	
+	new PerformanceObserver((list) => {
+  		const entries = list.getEntries();
+  		const lastEntry = entries[entries.length - 1]; // use latest LCP candidate
+  		
+		window.__lcp = lastEntry.startTime || 0;
+	}).observe({ type: "largest-contentful-paint", buffered: true });
+})();`
+
+// script to capture console errors and warnings, and request errors
+const errScript = `(() => {
+	window.__console_errors = [];
+	window.__request_errors = [];
+
+	// capture resource and JS errors
+	window.addEventListener('error', (e) => {
+		if (e.target && (e.target.src || e.target.href)) {
+			const message = (e.target.src || e.target.href) + " (type: " + e.target.tagName + ")";
+			window.__request_errors.push("[Resource Load Failed]: " + message);
+			return;
+		}
+
+		const message = e.message + " at " + e.filename + ":" + e.lineno + ":" + e.colno + " (" + e.error?.stack + ")";
+		window.__console_errors.push("[Uncaught JS Error]: " + message);
+	}, true);
+	
+	// capture unhandled promise rejections
+	window.addEventListener('unhandledrejection', (e) => {
+		const message = (e.reason ? e.reason.message : "Unknown") + " (" + e.reason?.stack + ")";
+		window.__console_errors.push("[Unhandled Promise Rejection]: " + message);
+	});
+	
+	// override fetch to capture request errors
+	const origFetch = fetch;
+	fetch = async function(...args) {
+		try {
+			const res = await origFetch.apply(this, args);
+			
+			if (res.status >= 400) {
+				const message = res.status + " for " + res.url;
+				window.__request_errors.push("[HTTP Error]: " + message);
+			}
+			
+			return res;
+		} catch (e) {
+		 	const message = e.message + " for " + (args ? args[0] : "");
+			window.__request_errors.push("[HTTP Error]: " + message);
+			throw e;
+		}
+	};
+
+	// override XMLHttpRequest to capture request errors
+	const origOpen = XMLHttpRequest.prototype.open;
+  	const origSend = XMLHttpRequest.prototype.send;
+  	XMLHttpRequest.prototype.open = function (method, url, async, user, password) {
+    	this.__requestUrl = url;
+    	return origOpen.apply(this, arguments);
+  	};
+ 	XMLHttpRequest.prototype.send = function (body) {
+    	const xhr = this;
+
+    	function logError() {
+			if (xhr.status >= 400 || xhr.status === 0) {
+				const message = xhr.status + " for " + xhr.__requestUrl;
+				window.__request_errors.push("[HTTP Error]: " + message);
+			}
+    	}
+
+		this.addEventListener("load", logError);
+		this.addEventListener("error", logError);
+		this.addEventListener("abort", logError);
+
+		return origSend.apply(this, arguments);
+	};
+
+	// override console.error to capture console errors
+	const originalConsoleError = console.error;
+	console.error = (...args) => {
+		const message = args.map(String).join(' ');
+		window.__console_errors.push("[Error]: " + message);
+		originalConsoleError.apply(console, args);
+	};
+	
+	// override console.warn to capture console warnings
+	const originalConsoleWarn = console.warn;
+	console.warn = (...args) => {
+		const message = args.map(String).join(' ');
+		window.__console_errors.push("[Warning]: " + message);
+		originalConsoleWarn.apply(console, args);
+	};
+	
+	return window.__console_errors;
+})();`
+
+// script to collect mobile responsiveness issues
+const responsiveScript = `(() => {
+	const __responsiveIssues = [];
+
+	// check for horizontal scrollbar
+	const horizontalBar = document.body.scrollWidth > window.innerWidth;
+	if (horizontalBar) {
+		__responsiveIssues.push("Has horizontal scrollbar");
+	}
+
+    // check overflowing elements
+    const els = Array.from(document.querySelectorAll("*"));
+    const overflowingEls = els
+        .filter(el => el.scrollWidth > el.clientWidth + 5)
+        .map((el, index) => {
+			const overflow = (el.scrollWidth - el.clientWidth).toString();
+			const tag = el.tagName.toLowerCase();
+			const selector = el.id ? (tag + '#' + el.id) : 
+				el.className ? (tag + '.' + el.className) : 
+				(tag + ':nth-of-type(' + (index + 1) + ')');
+
+			return selector + " (overflow: " + overflow + ")";
+		})
+        .slice(0, 3)
+		.forEach(el => {
+			__responsiveIssues.push("Overflowing element: " + el);
+		});
+    
+    // check for viewport meta tag
+    const hasViewport = !!document.querySelector('meta[name="viewport"]');
+	if (!hasViewport) {
+		__responsiveIssues.push("No viewport tag");
+	}
+    
+    // check if content adapts to viewport width
+    const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
+    const mainWidth = mainContent ? mainContent.offsetWidth : 0;
+    const windowWidth = window.innerWidth;
+    const widthRatio = mainWidth / windowWidth;
+    
+    // responsive sites typically have content that takes up
+    // 90-100 percent of viewport on mobile (not fixed pixel width)
+    const adaptiveLayout = widthRatio > 0.9;
+	if (!adaptiveLayout) {
+		__responsiveIssues.push("Not adaptive layout");
+	}
+
+	return __responsiveIssues;
+})()`
+
+// script to collect form issues
+const formValidationScript = `(() => {
+    const __formIssues = [];
+    
+    // iterate over all forms in the document
+    document.querySelectorAll('form').forEach((form, formIndex) => {
+        const formSelector = form.id ? 
+            'form#' + form.id : 
+            'form:nth-of-type(' + (formIndex + 1) + ')';
+        
+        // check for form action and method
+        const formAction = form.getAttribute('action') || form.getAttribute('onsubmit');
+        const formMethod = (form.getAttribute('method') || 'get').toLowerCase();
+		const hasJsAttr = (form.hasAttribute('data-action') || form.hasAttribute('ng-submit') || 
+			form.hasAttribute('v-on:submit') || form.hasAttribute('@submit'));
+		const hasHtmxAttr = (form.hasAttribute("hx-get") || form.hasAttribute("hx-post") || 
+			form.hasAttribute("hx-put") || form.hasAttribute("hx-patch") || form.hasAttribute("hx-delete"));
+        
+        if (!formAction && !hasJsAttr && !hasHtmxAttr) {
+            __formIssues.push(formSelector + " is missing action attribute or JavaScript submit handler");
+        }
+        
+        // check GET vs POST usage
+        const hasFileInput = !!form.querySelector('input[type="file"]');
+        const hasPasswordInput = !!form.querySelector('input[type="password"]');
+        const hasLargeTextarea = Array.from(form.querySelectorAll('textarea'))
+            .some(textarea => textarea.value.length > 2000);
+            
+        // forms with files, passwords, or large data should use POST
+        if (formMethod === 'get' && (hasFileInput || hasPasswordInput || hasLargeTextarea)) {
+			__formIssues.push(formSelector + " should use POST method for sensitive or large data submission");
+        }
+
+		// check for proper enctype for file uploads
+		if (hasFileInput && form.getAttribute('enctype') !== 'multipart/form-data') {
+			__formIssues.push(formSelector + " is missing proper enctype='multipart/form-data'");
+		}
+        
+        // check for CSRF protection on non-GET forms
+        if (formMethod !== 'get') {
+            const possibleCsrfTokens = form.querySelectorAll('input[name*="csrf"], input[name*="token"], input[name="_token"], input[name="authenticity_token"]');
+            if (possibleCsrfTokens.length === 0) {
+				__formIssues.push(
+					formSelector + " uses " + formMethod.toUpperCase() + " but appears to be missing CSRF protection"
+				);
+            }
+        }
+        
+        // check if form has a submit button
+        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"]');
+        if (!hasSubmitButton) {
+			__formIssues.push(formSelector + " is missing a submit button");
+        }
+
+		// check for duplicate IDs within the form
+		const idMap = new Map();
+		Array.from(form.querySelectorAll('[id]')).forEach(el => {
+			const id = el.id;
+			if (idMap.has(id)) {
+				__formIssues.push(formSelector + " has duplicate IDs (" + id + ")");
+			} else {
+				idMap.set(id, true);
+			}
+		});
+        
+        // find all input elements excluding hidden and submit types
+        const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea');
+        inputs.forEach((input, inputIndex) => {
+			const tag = input.tagName.toLowerCase()
+            const inputSelector = input.id ? tag + '#' + input.id : 
+                input.name ? 
+                    tag + '[name="' + input.name + '"]' : 
+                    tag + ':nth-of-type(' + (inputIndex + 1) + ')';
+            
+            // check for label association
+            const hasLabel = input.id ? 
+                !!document.querySelector('label[for="' + input.id + '"]') : 
+                input.closest('label') !== null;
+            if (!hasLabel) {
+				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks associated label");
+            }
+            
+            // check for name attribute (crucial for form submission)
+            if (!input.name && input.type !== 'button' && input.type !== 'submit') {
+				__formIssues.push(
+					inputSelector + " (in " + formSelector + ") is missing name attribute (required for form submission)"
+				);
+            }
+            
+            // check for accessibility attributes
+            if (!input.getAttribute('aria-label') && !input.getAttribute('aria-labelledby') && !hasLabel) {
+				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks accessible name");
+            }
+            
+            // password field specific checks
+            if (input.type === 'password') {
+                // check if form is served over HTTPS (simple check, more robust would be via headers)
+                if (window.location.protocol !== 'https:') {
+					__formIssues.push(
+						inputSelector + " (in " + formSelector + ") is a password field not served over HTTPS"
+					);
+                }
+            }
+
+			// check for required fields without validation
+			if (input.required) {
+				const hasValidation = (
+					input.hasAttribute('pattern') || 
+					input.hasAttribute('min') || 
+					input.hasAttribute('max') ||
+					input.hasAttribute('minlength') || 
+					input.hasAttribute('maxlength') ||
+					input.type === 'email' ||
+					input.type === 'url' ||
+					input.type === 'number' ||
+					input.type === 'date'
+				);
+
+				if (!hasValidation && input.type === 'text') {
+					__formIssues.push(inputSelector + " (in " + formSelector + ") has no validation");
+				}
+			}
+        });
+    });
+    
+    return __formIssues;
+})();`
