@@ -293,39 +293,6 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	return result
 }
 
-// important security headers to check
-var securityHeaders = []string{
-	"Content-Security-Policy",
-	"Strict-Transport-Security",
-	"X-Content-Type-Options",
-	"X-Frame-Options",
-	"Permissions-Policy",
-	"Referrer-Policy",
-}
-
-// checkSecurityHeaders looks for missing security headers from
-// the page's main document request
-func checkSecurityHeaders(resHeaders network.Headers) []string {
-	missingHeaders := []string{}
-
-	for _, header := range securityHeaders {
-		found := false
-
-		for key := range resHeaders {
-			if strings.EqualFold(key, header) {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			missingHeaders = append(missingHeaders, header)
-		}
-	}
-
-	return missingHeaders
-}
-
 // waitNetworkIdle returns a chromedp.Action that waits until network is idle,
 // similar to Puppeteer's "networkidle0".
 func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
@@ -417,6 +384,39 @@ func isIgnoredURL(url string) bool {
 	}
 
 	return false
+}
+
+// important security headers to check
+var securityHeaders = []string{
+	"Content-Security-Policy",
+	"Strict-Transport-Security",
+	"X-Content-Type-Options",
+	"X-Frame-Options",
+	"Permissions-Policy",
+	"Referrer-Policy",
+}
+
+// checkSecurityHeaders looks for missing security headers from
+// the page's main document request
+func checkSecurityHeaders(resHeaders network.Headers) []string {
+	missingHeaders := []string{}
+
+	for _, header := range securityHeaders {
+		found := false
+
+		for key := range resHeaders {
+			if strings.EqualFold(key, header) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			missingHeaders = append(missingHeaders, header)
+		}
+	}
+
+	return missingHeaders
 }
 
 // script to collect LCP time
