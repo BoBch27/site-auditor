@@ -258,7 +258,7 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 }
 
 // waitNetworkIdle returns a chromedp.Action that waits until network is idle,
-// similar to Puppeteer's "networkidle0".
+// similar to Puppeteer's "networkidle0"
 func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		activeRequests := make(map[network.RequestID]string)
