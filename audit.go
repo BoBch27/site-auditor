@@ -28,6 +28,7 @@ type auditResult struct {
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
 func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) ([]auditResult, error) {
+	// extract specified checks to run
 	checksToRun := extractChecksToRun(specifiedChecks)
 
 	// setup browser options
@@ -92,18 +93,26 @@ const (
 	formIssues       auditCheck = "form"
 )
 
-// extractChecksToRun takes in a comma-separated string and extracts
-// different audit checks to run
-func extractChecksToRun(checks string) []auditCheck {
-	if checks == "" {
-		return nil
+// extractChecksToRun takes in a comma-separated string and specifies
+// which audit checks to run
+func extractChecksToRun(checks string) map[auditCheck]bool {
+	checksToRun := map[auditCheck]bool{
+		lcp:              true,
+		consoleErrs:      true,
+		requestErrs:      true,
+		missingHeaders:   true,
+		responsiveIssues: true,
+		formIssues:       true,
 	}
 
-	checksToRun := []auditCheck{}
+	if checks == "" {
+		return checksToRun
+	}
 
-	auditChecks := strings.SplitSeq(checks, ",")
-	for s := range auditChecks {
-		checksToRun = append(checksToRun, auditCheck(s))
+	checksArr := strings.Split(checks, ",")
+
+	for check := range checksToRun {
+		checksToRun[check] = slices.Contains(checksArr, string(check))
 	}
 
 	return checksToRun
@@ -111,7 +120,7 @@ func extractChecksToRun(checks string) []auditCheck {
 
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) auditResult {
+func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bool) auditResult {
 	result := auditResult{url: url}
 
 	// create new window context
@@ -149,14 +158,14 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 			return fmt.Errorf("failed to enable page domain: %w", err)
 		}
 
-		if checksToRun == nil || slices.Contains(checksToRun, lcp) {
+		if checksToRun[lcp] {
 			_, err = page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject LCP script: %w", err)
 			}
 		}
 
-		if checksToRun == nil || slices.Contains(checksToRun, consoleErrs) || slices.Contains(checksToRun, requestErrs) {
+		if checksToRun[consoleErrs] || checksToRun[requestErrs] {
 			_, err = page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject error script: %w", err)
@@ -248,14 +257,14 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 	}
 
 	// capture missing security headers
-	if checksToRun == nil || slices.Contains(checksToRun, missingHeaders) {
+	if checksToRun[missingHeaders] {
 		result.missingHeaders = checkSecurityHeaders(nr.Headers)
 	}
 
 	// perform checks
 	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
 		// calculate largest contentful paint time
-		if checksToRun == nil || slices.Contains(checksToRun, lcp) {
+		if checksToRun[lcp] {
 			err := chromedp.Evaluate(`window.__lcp || 0`, &result.lcp).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate LCP: %w", err)
@@ -263,7 +272,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 		}
 
 		// capture mobile responsiveness issues
-		if checksToRun == nil || slices.Contains(checksToRun, responsiveIssues) {
+		if checksToRun[responsiveIssues] {
 			err = chromedp.Evaluate(responsiveScript, &result.responsiveIssues).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate mobile responsiveness: %w", err)
@@ -271,7 +280,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 		}
 
 		// collect console errors and warnings
-		if checksToRun == nil || slices.Contains(checksToRun, consoleErrs) {
+		if checksToRun[consoleErrs] {
 			err = chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate console errors: %w", err)
@@ -279,7 +288,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 		}
 
 		// collect failed requests
-		if checksToRun == nil || slices.Contains(checksToRun, requestErrs) {
+		if checksToRun[requestErrs] {
 			err = chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate request errors: %w", err)
@@ -287,7 +296,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun []auditCheck) aud
 		}
 
 		// capture form issues
-		if checksToRun == nil || slices.Contains(checksToRun, formIssues) {
+		if checksToRun[formIssues] {
 			err = chromedp.Evaluate(formValidationScript, &result.formIssues).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
