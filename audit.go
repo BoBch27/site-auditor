@@ -213,7 +213,7 @@ func auditWebsite(ctx context.Context, url string) auditResult {
 	}
 
 	// capture missing security headers
-	result.requestErrs = checkSecurityHeaders(nr.Headers)
+	result.missingHeaders = checkSecurityHeaders(nr.Headers)
 
 	// perform checks
 	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
