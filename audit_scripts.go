@@ -102,7 +102,7 @@ const responsiveScript = `(() => {
 	const __responsiveIssues = [];
 
 	// check for horizontal scrollbar
-	const horizontalBar = document.body.scrollWidth > window.innerWidth;
+	const horizontalBar = document.documentElement.scrollWidth > document.documentElement.clientWidth;
 	if (horizontalBar) {
 		__responsiveIssues.push("Has horizontal scrollbar");
 	}
