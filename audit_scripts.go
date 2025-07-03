@@ -101,6 +101,12 @@ const errScript = `(() => {
 const responsiveScript = `(() => {
 	const __responsiveIssues = [];
 
+	// check for viewport meta tag
+    const hasViewport = !!document.querySelector('meta[name="viewport"]');
+	if (!hasViewport) {
+		__responsiveIssues.push("No viewport tag");
+	}
+	
 	// check for horizontal scrollbar
 	const horizontalBar = document.documentElement.scrollWidth > document.documentElement.clientWidth;
 	if (horizontalBar) {
@@ -124,12 +130,6 @@ const responsiveScript = `(() => {
 		.forEach(el => {
 			__responsiveIssues.push("Overflowing element: " + el);
 		});
-    
-    // check for viewport meta tag
-    const hasViewport = !!document.querySelector('meta[name="viewport"]');
-	if (!hasViewport) {
-		__responsiveIssues.push("No viewport tag");
-	}
     
     // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
