@@ -112,6 +112,26 @@ const responsiveScript = `(() => {
 	} else {
 		__responsiveIssues.push("No viewport meta tag");
 	}
+
+	// check for media queries in stylesheets
+	let hasMediaQueries = Array.from(document.styleSheets)
+		.some(sheet => {
+			try {
+				return Array.from(sheet.cssRules).some(rule => rule.type === CSSRule.MEDIA_RULE);
+			} catch(e) {
+				// cross-origin stylesheet access error
+				return false;
+			}
+		});
+	if (!hasMediaQueries) {
+		hasMediaQueries = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+			.some(link => {
+				return link.media && link.media !== 'all' && link.media !== '';
+			});
+		if (!hasMediaQueries) {
+			__responsiveIssues.push("No media queries in stylesheets");
+		}
+	}
 	
 	// check for horizontal scrollbar
 	const horizontalBar = document.documentElement.scrollWidth > document.documentElement.clientWidth;
