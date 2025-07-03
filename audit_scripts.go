@@ -197,6 +197,19 @@ const responsiveScript = `(() => {
 	if (hasInflexibleImages) {
 		__responsiveIssues.push("Has non flexible images");
 	}
+
+	// check for small text
+	const hasSmallText = Array.from(
+			document.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, a, li, td, th')
+		).some(el => {
+			if (el.offsetParent === null || !el.textContent.trim()) return false; // skip invisible elements
+			const style = window.getComputedStyle(el);
+			const fontSize = parseFloat(style.fontSize);
+            return fontSize < 12;
+		});
+	if (hasSmallText) {
+		__responsiveIssues.push("Has small text");
+	}
     
     // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
