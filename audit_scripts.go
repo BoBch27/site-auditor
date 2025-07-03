@@ -156,6 +156,18 @@ const responsiveScript = `(() => {
 		.forEach(el => {
 			__responsiveIssues.push("Overflowing element: " + el);
 		});
+
+	// check for small tap targets (links, buttons, etc.)
+	const hasSmallTapTargets = Array.from(
+			document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
+		).some(el => {
+			if (el.offsetParent === null) return false; // skip invisible elements
+			const rect = el.getBoundingClientRect();
+			return (rect.width < 44 || rect.height < 44) && rect.width > 0 && rect.height > 0;
+		});
+	if (hasSmallTapTargets) {
+		__responsiveIssues.push("Has small tap targets");
+	}
     
     // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
