@@ -184,6 +184,19 @@ const responsiveScript = `(() => {
 	if (hasCrowdedTapTargets) {
 		__responsiveIssues.push("Has crowded tap targets");
 	}
+
+	// check for non responsive images (wider than viewport)
+	const hasInflexibleImages = Array.from(document.querySelectorAll('img'))
+		.some(img => {
+			if (img.offsetParent === null) return false; // skip invisible images
+			const style = window.getComputedStyle(img);
+			const rect = img.getBoundingClientRect();
+			return rect.width > window.innerWidth && 
+				style.maxWidth === 'none' && !style.width.includes('%');
+		});
+	if (hasInflexibleImages) {
+		__responsiveIssues.push("Has non flexible images");
+	}
     
     // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
