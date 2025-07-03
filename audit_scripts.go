@@ -102,9 +102,15 @@ const responsiveScript = `(() => {
 	const __responsiveIssues = [];
 
 	// check for viewport meta tag
-    const hasViewport = !!document.querySelector('meta[name="viewport"]');
-	if (!hasViewport) {
-		__responsiveIssues.push("No viewport tag");
+    const viewportTag = document.querySelector('meta[name="viewport"]');
+	if (viewportTag) {
+		const content = viewportTag.getAttribute('content') || '';
+		const hasDeviceWidth = content.includes('width=device-width');
+		if (!hasDeviceWidth) {
+			__responsiveIssues.push("Viewport meta tag missing width attribute");
+		}
+	} else {
+		__responsiveIssues.push("No viewport meta tag");
 	}
 	
 	// check for horizontal scrollbar
