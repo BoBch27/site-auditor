@@ -100,6 +100,7 @@ const errScript = `(() => {
 // script to collect mobile responsiveness issues
 const responsiveScript = `(() => {
 	const __responsiveIssues = [];
+	let score = 100;
 
 	// check for viewport meta tag
     const viewportTag = document.querySelector('meta[name="viewport"]');
@@ -108,9 +109,11 @@ const responsiveScript = `(() => {
 		const hasDeviceWidth = content.includes('width=device-width');
 		if (!hasDeviceWidth) {
 			__responsiveIssues.push("Viewport meta tag missing width attribute");
+			score -= 25;
 		}
 	} else {
 		__responsiveIssues.push("No viewport meta tag");
+		score -= 30;
 	}
 
 	// check for media queries in stylesheets
@@ -130,6 +133,7 @@ const responsiveScript = `(() => {
 			});
 		if (!hasMediaQueries) {
 			__responsiveIssues.push("No media queries in stylesheets");
+			score -= 25;
 		}
 	}
 	
@@ -137,33 +141,36 @@ const responsiveScript = `(() => {
 	const horizontalBar = document.documentElement.scrollWidth > document.documentElement.clientWidth;
 	if (horizontalBar) {
 		__responsiveIssues.push("Has horizontal scrollbar");
+		score -= 25;
 	}
 
 	// check for horizontally overflowing elements
-    const hasOverflowingElements = Array.from(document.querySelectorAll("*"))
-        .some(el => {
+    const overflowingElements = Array.from(document.querySelectorAll("*"))
+        .filter(el => {
 			if (el.offsetParent === null) return false; // skip invisible elements
 			return el.scrollWidth > (el.clientWidth + 5);
-		});
-    if (hasOverflowingElements) {
+		}).length;
+    if (overflowingElements > 0) {
 		__responsiveIssues.push("Has horizontally overflowing elements");
+		score -= Math.min(15, overflowingElements * 2);
 	}
 
 	// check for small and crowded tap targets (links, buttons, etc.)
 	const interactiveElements = Array.from(
 		document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
 	);
-	const hasSmallTapTargets = interactiveElements
-		.some(el => {
+	const smallTapTargets = interactiveElements
+		.filter(el => {
 			if (el.offsetParent === null) return false; // skip invisible elements
 			const rect = el.getBoundingClientRect();
 			return (rect.width < 44 || rect.height < 44) && rect.width > 0 && rect.height > 0;
-		});
-	if (hasSmallTapTargets) {
+		}).length;
+	if (smallTapTargets > 0) {
 		__responsiveIssues.push("Has small tap targets");
+		score -= Math.min(12, smallTapTargets * 1.2);
 	}
-	const hasCrowdedTapTargets = interactiveElements
-		.some(el => {
+	const crowdedTapTargets = interactiveElements
+		.filter(el => {
 			if (el.offsetParent === null) return false; // skip invisible elements
 			const rect = el.getBoundingClientRect();
 			const nearby = document.elementsFromPoint(rect.x + rect.width/2, rect.y + rect.height + 8);
@@ -172,35 +179,38 @@ const responsiveScript = `(() => {
 				interactiveElements.includes(n) &&
 				n.getBoundingClientRect().y < rect.y + rect.height + 16
 			);
-		});
-	if (hasCrowdedTapTargets) {
+		}).length;
+	if (crowdedTapTargets > 0) {
 		__responsiveIssues.push("Has crowded tap targets");
+		score -= Math.min(6, crowdedTapTargets * 0.6);
 	}
 
 	// check for non responsive images (wider than viewport)
-	const hasInflexibleImages = Array.from(document.querySelectorAll('img'))
-		.some(img => {
+	const inflexibleImages = Array.from(document.querySelectorAll('img'))
+		.filter(img => {
 			if (img.offsetParent === null) return false; // skip invisible images
 			const style = window.getComputedStyle(img);
 			const rect = img.getBoundingClientRect();
 			return rect.width > window.innerWidth && 
 				style.maxWidth === 'none' && !style.width.includes('%');
-		});
-	if (hasInflexibleImages) {
+		}).length;
+	if (inflexibleImages > 0) {
 		__responsiveIssues.push("Has non flexible images");
+		score -= Math.min(9, inflexibleImages * 1.8);
 	}
 
 	// check for small text
-	const hasSmallText = Array.from(
+	const smallText = Array.from(
 			document.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, a, li, td, th')
-		).some(el => {
+		).filter(el => {
 			if (el.offsetParent === null || !el.textContent.trim()) return false; // skip invisible elements
 			const style = window.getComputedStyle(el);
 			const fontSize = parseFloat(style.fontSize);
             return fontSize < 12;
-		});
-	if (hasSmallText) {
+		}).length;
+	if (smallText > 0) {
 		__responsiveIssues.push("Has small text");
+		score -= Math.min(9, smallText * 1.2);
 	}
 
 	// check for flexible layout
@@ -219,7 +229,12 @@ const responsiveScript = `(() => {
 		});
 	if (!hasFlexLayout) {
 		__responsiveIssues.push("No flexible layout patterns");
+		score -= 10;
 	}
+
+	// ensure score doesn't go below 0
+	const finalScore = Math.max(0, Math.round(score));
+	__responsiveIssues.push("Score: " + finalScore);
 
 	return __responsiveIssues;
 })()`
