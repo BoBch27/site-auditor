@@ -139,23 +139,15 @@ const responsiveScript = `(() => {
 		__responsiveIssues.push("Has horizontal scrollbar");
 	}
 
-    // check overflowing elements
-    const els = Array.from(document.querySelectorAll("*"));
-    const overflowingEls = els
-        .filter(el => el.scrollWidth > el.clientWidth + 5)
-        .map((el, index) => {
-			const overflow = (el.scrollWidth - el.clientWidth).toString();
-			const tag = el.tagName.toLowerCase();
-			const selector = el.id ? (tag + '#' + el.id) : 
-				el.className ? (tag + '.' + el.className) : 
-				(tag + ':nth-of-type(' + (index + 1) + ')');
-
-			return selector + " (overflow: " + overflow + ")";
-		})
-        .slice(0, 3)
-		.forEach(el => {
-			__responsiveIssues.push("Overflowing element: " + el);
+	// check for horizontally overflowing elements
+    const hasOverflowingElements = Array.from(document.querySelectorAll("*"))
+        .some(el => {
+			if (el.offsetParent === null) return false; // skip invisible elements
+			return el.scrollWidth > (el.clientWidth + 5);
 		});
+    if (hasOverflowingElements) {
+		__responsiveIssues.push("Has horizontally overflowing elements");
+	}
 
 	// check for small and crowded tap targets (links, buttons, etc.)
 	const interactiveElements = Array.from(
