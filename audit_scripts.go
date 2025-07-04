@@ -220,19 +220,6 @@ const responsiveScript = `(() => {
 	if (!hasFlexLayout) {
 		__responsiveIssues.push("No flexible layout patterns");
 	}
-    
-    // check if content adapts to viewport width
-    const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
-    const mainWidth = mainContent ? mainContent.offsetWidth : 0;
-    const windowWidth = window.innerWidth;
-    const widthRatio = mainWidth / windowWidth;
-    
-    // responsive sites typically have content that takes up
-    // 90-100 percent of viewport on mobile (not fixed pixel width)
-    const adaptiveLayout = widthRatio > 0.9;
-	if (!adaptiveLayout) {
-		__responsiveIssues.push("Not adaptive layout");
-	}
 
 	return __responsiveIssues;
 })()`
