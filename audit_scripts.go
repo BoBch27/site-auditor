@@ -312,6 +312,17 @@ const formValidationScript = `(() => {
 					inputSelector + " (in " + formSelector + ") is missing name attribute (required for form submission)"
 				);
             }
+
+			// check for correct input type
+			if (input.type === 'text' && input.name) {
+                const name = input.name.toLowerCase();
+                if (name.includes('email') && input.type !== 'email') {
+					__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
+                }
+                if (name.includes('tel') && input.type !== 'tel') {
+                    __formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
+                }
+            }
             
             // check for accessibility attributes
             if (!input.getAttribute('aria-label') && !input.getAttribute('aria-labelledby') && !hasLabel) {
