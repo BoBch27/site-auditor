@@ -210,6 +210,24 @@ const responsiveScript = `(() => {
 	if (hasSmallText) {
 		__responsiveIssues.push("Has small text");
 	}
+
+	// check for flexible layout
+	const hasFlexLayout = Array.from(document.querySelectorAll(
+			'main, .container, .wrapper, header, nav, section, article, aside, footer'
+		)).some(el => {
+			if (el.offsetParent === null) return false; // skip invisible elements
+			const style = window.getComputedStyle(el);
+			return style.display.includes('flex') || 
+				style.display.includes('grid') ||
+				style.display === 'block' && (
+					style.maxWidth.includes('%') || 
+					style.width.includes('%') ||
+					style.width === 'auto'
+				);
+		});
+	if (!hasFlexLayout) {
+		__responsiveIssues.push("No flexible layout patterns");
+	}
     
     // check if content adapts to viewport width
     const mainContent = document.querySelector('main, #main, .main, #content, .content, body > div');
