@@ -217,7 +217,6 @@ const responsiveScript = `(() => {
 	const hasFlexLayout = Array.from(document.querySelectorAll(
 			'main, .container, .wrapper, header, nav, section, article, aside, footer'
 		)).some(el => {
-			if (el.offsetParent === null) return false; // skip invisible elements
 			const style = window.getComputedStyle(el);
 			return style.display.includes('flex') || 
 				style.display.includes('grid') ||
