@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/chromedp/chromedp/device"
 )
 
 type auditResult struct {
@@ -179,12 +179,10 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 		return result
 	}
 
-	// emulate mobile device (iPhone)
+	// emulate mobile device
 	err = chromedp.Run(
 		timeoutCtx,
-		emulation.SetUserAgentOverride("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"),
-		emulation.SetDeviceMetricsOverride(375, 667, 2.0, true),
-		emulation.SetTouchEmulationEnabled(true),
+		chromedp.Emulate(chromedp.Device(device.IPhone13)),
 	)
 	if err != nil {
 		result.auditErrs = append(
