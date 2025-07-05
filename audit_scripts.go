@@ -234,7 +234,9 @@ const responsiveScript = `(() => {
 
 	// ensure score doesn't go below 0
 	const finalScore = Math.max(0, Math.round(score));
-	__responsiveIssues.push("Score: " + finalScore);
+	const scoreType = (finalScore >= 75) ? '(Good ✅)' : (finalScore >= 60) ? '(Minor ⚠️)' : 
+		(finalScore >= 45) ? '(Major 🛑)' : '(Critical ❌)';
+	__responsiveIssues.push("Score: " + finalScore + " " + scoreType);
 
 	return __responsiveIssues;
 })()`
