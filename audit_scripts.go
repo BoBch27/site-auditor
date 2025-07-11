@@ -330,12 +330,12 @@ const formValidationScript = `(() => {
             }
 
 			// check for correct input type
-			if (input.type === 'text' && input.name) {
-                const name = input.name.toLowerCase();
+			if (input.type === 'text' && (input.name || input.id)) {
+                const name = input.name?.toLowerCase() || input.id?.toLowerCase();
                 if (name.includes('email') && input.type !== 'email') {
 					__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
                 }
-                if (name.includes('tel') && input.type !== 'tel') {
+                if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
                     __formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
                 }
             }
