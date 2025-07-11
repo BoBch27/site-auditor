@@ -246,9 +246,6 @@ const formValidationScript = `(() => {
     
     // iterate over all forms in the document
     document.querySelectorAll('form').forEach((form, formIndex) => {
-		// skip invisible forms
-		if (form.offsetParent === null) return;
-
         const formSelector = form.id ? 
             'form#' + form.id : 
             'form:nth-of-type(' + (formIndex + 1) + ')';
@@ -311,9 +308,6 @@ const formValidationScript = `(() => {
         // find all input elements excluding hidden and submit types
         const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea');
         inputs.forEach((input, inputIndex) => {
-			// skip invisible inputs
-			if (input.offsetParent === null) return;
-
 			const tag = input.tagName.toLowerCase()
             const inputSelector = input.id ? tag + '#' + input.id : 
                 input.name ? 
