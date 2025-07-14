@@ -8,12 +8,17 @@ import (
 
 func main() {
 	// define flags
-	input := flag.String("input", "websites.csv", "Path to input CSV file with URLs")
+	input := flag.String("input", "", "Path to input CSV file with URLs")
 	output := flag.String("output", "report.csv", "Path to output CSV report")
 	checks := flag.String("checks", "", "Specify which checks to run")
 
 	// parse flags
 	flag.Parse()
+
+	// check specified flag
+	if *input == "" {
+		log.Fatal("input file not specified")
+	}
 
 	// extract urls
 	urls, err := readURLsFromCSV(*input)
