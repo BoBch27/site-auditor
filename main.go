@@ -8,6 +8,7 @@ import (
 
 func main() {
 	// define flags
+	search := flag.String("search", "", "Search prompt to scrape URLs for")
 	input := flag.String("input", "", "Path to input CSV file with URLs")
 	output := flag.String("output", "report.csv", "Path to output CSV report")
 	checks := flag.String("checks", "", "Specify which checks to run")
