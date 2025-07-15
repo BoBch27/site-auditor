@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,14 +32,20 @@ func scrapeURLs(searchPrompt string) ([]string, error) {
 		// grab links
 		doc.Find("div.yuRUbf a").Each(func(i int, s *goquery.Selection) {
 			href, exists := s.Attr("href")
-			if exists && strings.HasPrefix(href, "http") && !strings.Contains(href, "google.com") {
-				homeURL, err := stripToHome(href)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				urls = append(urls, homeURL)
+			if !exists || !strings.HasPrefix(href, "http") || strings.Contains(href, "google.com") {
+				return
 			}
+
+			homeURL, err := stripToHome(href)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if slices.Contains(urls, homeURL) {
+				return
+			}
+
+			urls = append(urls, homeURL)
 		})
 
 		// random 30-60 second wait to simulate human behaviour
