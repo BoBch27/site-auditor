@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -31,7 +32,12 @@ func scrapeURLs(searchPrompt string) ([]string, error) {
 		doc.Find("div.yuRUbf a").Each(func(i int, s *goquery.Selection) {
 			href, exists := s.Attr("href")
 			if exists && strings.HasPrefix(href, "http") && !strings.Contains(href, "google.com") {
-				urls = append(urls, href)
+				homeURL, err := stripToHome(href)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				urls = append(urls, homeURL)
 			}
 		})
 
@@ -71,4 +77,20 @@ func getDoc(searchPath string) (*goquery.Document, error) {
 	}
 
 	return doc, err
+}
+
+// stripToHome takes in a raw URL and strips all paths and queries,
+// leaving only the home page
+func stripToHome(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	if u.Host == "" {
+		return "", fmt.Errorf("invalid URL: %s", raw)
+	}
+
+	// always end with slash for root
+	return u.Scheme + "://" + u.Host + "/", nil
 }
