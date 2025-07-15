@@ -28,7 +28,16 @@ func main() {
 	}
 
 	// extract urls
-	urls, err := readURLsFromCSV(*input)
+	// get URLs
+	var urls []string
+	var err error
+	if *search != "" {
+		// scrape URLs from Google search
+		urls, err = scrapeURLs(*search)
+	} else {
+		// extract URLs from CSV
+		urls, err = readURLsFromCSV(*input)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
