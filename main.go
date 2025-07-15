@@ -16,9 +16,15 @@ func main() {
 	// parse flags
 	flag.Parse()
 
-	// check specified flag
+	// check specified flags
 	if *input == "" {
-		log.Fatal("input file not specified")
+		if *search == "" {
+			log.Fatal("neither input file nor search prompt are specified")
+		}
+	} else {
+		if *search != "" {
+			log.Fatal("only one of input file or search prompt can be specified")
+		}
 	}
 
 	// extract urls
