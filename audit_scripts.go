@@ -287,17 +287,6 @@ const formValidationScript = `(() => {
         if (!hasSubmitButton) {
 			__formIssues.push(formSelector + " is missing a submit button");
         }
-
-		// check for duplicate IDs within the form
-		const idMap = new Map();
-		Array.from(form.querySelectorAll('[id]')).forEach(el => {
-			const id = el.id;
-			if (idMap.has(id)) {
-				__formIssues.push(formSelector + " has duplicate IDs (" + id + ")");
-			} else {
-				idMap.set(id, true);
-			}
-		});
         
         // find all input elements excluding hidden and submit types
         const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea');
