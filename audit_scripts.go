@@ -358,25 +358,6 @@ const formValidationScript = `(() => {
 					);
                 }
             }
-
-			// check for required fields without validation
-			if (input.required) {
-				const hasValidation = (
-					input.hasAttribute('pattern') || 
-					input.hasAttribute('min') || 
-					input.hasAttribute('max') ||
-					input.hasAttribute('minlength') || 
-					input.hasAttribute('maxlength') ||
-					input.type === 'email' ||
-					input.type === 'url' ||
-					input.type === 'number' ||
-					input.type === 'date'
-				);
-
-				if (!hasValidation && input.type === 'text') {
-					__formIssues.push(inputSelector + " (in " + formSelector + ") has no validation");
-				}
-			}
         });
     });
     
