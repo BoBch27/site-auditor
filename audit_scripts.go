@@ -105,11 +105,15 @@ const responsiveScript = `(() => {
 	// check for viewport meta tag
     const viewportTag = document.querySelector('meta[name="viewport"]');
 	if (viewportTag) {
-		const content = viewportTag.getAttribute('content') || '';
-		const hasDeviceWidth = content.includes('width=device-width');
-		if (!hasDeviceWidth) {
-			__responsiveIssues.push("Viewport meta tag missing width attribute");
-			score -= 25;
+		const id = viewportTag.id;
+		const isWix = id.includes('wix');
+		if (!isWix) {
+			const content = viewportTag.getAttribute('content') || '';
+			const hasDeviceWidth = content.includes('width=device-width');
+			if (!hasDeviceWidth) {
+				__responsiveIssues.push("Viewport meta tag has an invalid width attribute");
+				score -= 25;
+			}
 		}
 	} else {
 		__responsiveIssues.push("No viewport meta tag");
