@@ -282,16 +282,6 @@ const formValidationScript = `(() => {
 			__formIssues.push(formSelector + " is missing proper enctype='multipart/form-data'");
 		}
         
-        // check for CSRF protection on non-GET forms
-        if (formMethod !== 'get') {
-            const possibleCsrfTokens = form.querySelectorAll('input[name*="csrf"], input[name*="token"], input[name="_token"], input[name="authenticity_token"]');
-            if (possibleCsrfTokens.length === 0) {
-				__formIssues.push(
-					formSelector + " uses " + formMethod.toUpperCase() + " but appears to be missing CSRF protection"
-				);
-            }
-        }
-        
         // check if form has a submit button
         const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"]');
         if (!hasSubmitButton) {
