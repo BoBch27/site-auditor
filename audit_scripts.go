@@ -254,30 +254,18 @@ const formValidationScript = `(() => {
             'form#' + form.id : 
             'form:nth-of-type(' + (formIndex + 1) + ')';
         
-        // check for form action and method
+        // check for presence of form submit handler
         const formAction = form.getAttribute('action') || form.getAttribute('onsubmit');
-        const formMethod = (form.getAttribute('method') || 'get').toLowerCase();
 		const hasJsAttr = (form.hasAttribute('data-action') || form.hasAttribute('ng-submit') || 
 			form.hasAttribute('v-on:submit') || form.hasAttribute('@submit'));
 		const hasHtmxAttr = (form.hasAttribute("hx-get") || form.hasAttribute("hx-post") || 
 			form.hasAttribute("hx-put") || form.hasAttribute("hx-patch") || form.hasAttribute("hx-delete"));
-        
         if (!formAction && !hasJsAttr && !hasHtmxAttr) {
             __formIssues.push(formSelector + " is missing action attribute or JavaScript submit handler");
         }
         
-        // check GET vs POST usage
-        const hasFileInput = !!form.querySelector('input[type="file"]');
-        const hasPasswordInput = !!form.querySelector('input[type="password"]');
-        const hasLargeTextarea = Array.from(form.querySelectorAll('textarea'))
-            .some(textarea => textarea.value.length > 2000);
-            
-        // forms with files, passwords, or large data should use POST
-        if (formMethod === 'get' && (hasFileInput || hasPasswordInput || hasLargeTextarea)) {
-			__formIssues.push(formSelector + " should use POST method for sensitive or large data submission");
-        }
-
 		// check for proper enctype for file uploads
+        const hasFileInput = !!form.querySelector('input[type="file"]');
 		if (hasFileInput && form.getAttribute('enctype') !== 'multipart/form-data') {
 			__formIssues.push(formSelector + " is missing proper enctype='multipart/form-data'");
 		}
