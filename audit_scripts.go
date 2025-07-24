@@ -311,9 +311,8 @@ const formValidationScript = `(() => {
                 }
             }
             
-            // password field specific checks
+			// check for passwords served over HTTP
             if (input.type === 'password') {
-                // check if form is served over HTTPS (simple check, more robust would be via headers)
                 if (window.location.protocol !== 'https:') {
 					__formIssues.push(
 						inputSelector + " (in " + formSelector + ") is a password field not served over HTTPS"
