@@ -278,7 +278,7 @@ const formValidationScript = `(() => {
         
         // iterate over all input elements excluding hidden and submit types
         form.
-			querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea').
+			querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea').
 			forEach((input, inputIndex) => {
 				const tag = input.tagName.toLowerCase()
 				const inputSelector = input.id ? tag + '#' + input.id : 
