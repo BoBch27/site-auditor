@@ -264,17 +264,17 @@ const formValidationScript = `(() => {
             __formIssues.push(formSelector + " is missing action attribute or JavaScript submit handler");
         }
         
+		// check if form has a submit button
+        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+        if (!hasSubmitButton) {
+			__formIssues.push(formSelector + " is missing a submit button");
+        }
+
 		// check for proper enctype for file uploads
         const hasFileInput = !!form.querySelector('input[type="file"]');
 		if (hasFileInput && form.getAttribute('enctype') !== 'multipart/form-data') {
 			__formIssues.push(formSelector + " is missing proper enctype='multipart/form-data'");
 		}
-        
-        // check if form has a submit button
-        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
-        if (!hasSubmitButton) {
-			__formIssues.push(formSelector + " is missing a submit button");
-        }
         
         // iterate over all input elements excluding hidden and submit types
         form.
