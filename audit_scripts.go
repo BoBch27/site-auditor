@@ -285,12 +285,14 @@ const formValidationScript = `(() => {
                     tag + '[name="' + input.name + '"]' : 
                     tag + ':nth-of-type(' + (inputIndex + 1) + ')';
             
-            // check for label association
+            // check for presence of label or placeholder
             const hasLabel = input.id ? 
                 !!document.querySelector('label[for="' + input.id + '"]') : 
                 input.closest('label') !== null;
-            if (!hasLabel) {
-				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks associated label");
+			const hasAriaLabel = input.hasAttribute('aria-label') && input.getAttribute('aria-label').trim() !== '';
+			const hasPlaceholder = input.hasAttribute('placeholder') && input.getAttribute('placeholder').trim() !== '';
+            if (!hasLabel && !hasAriaLabel && !hasPlaceholder) {
+				__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a label");
             }
             
             // check for name attribute (crucial for form submission)
@@ -309,11 +311,6 @@ const formValidationScript = `(() => {
                 if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
                     __formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
                 }
-            }
-            
-            // check for accessibility attributes
-            if (!input.getAttribute('aria-label') && !input.getAttribute('aria-labelledby') && !hasLabel) {
-				__formIssues.push(inputSelector + " (in " + formSelector + ") lacks accessible name");
             }
             
             // password field specific checks
