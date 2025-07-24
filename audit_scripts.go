@@ -276,50 +276,53 @@ const formValidationScript = `(() => {
 			__formIssues.push(formSelector + " is missing a submit button");
         }
         
-        // find all input elements excluding hidden and submit types
-        const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea');
-        inputs.forEach((input, inputIndex) => {
-			const tag = input.tagName.toLowerCase()
-            const inputSelector = input.id ? tag + '#' + input.id : 
-                input.name ? 
-                    tag + '[name="' + input.name + '"]' : 
-                    tag + ':nth-of-type(' + (inputIndex + 1) + ')';
-            
-            // check for presence of label or placeholder
-            const hasLabel = input.id ? 
-                !!document.querySelector('label[for="' + input.id + '"]') : 
-                input.closest('label') !== null;
-			const hasAriaLabel = input.hasAttribute('aria-label') && input.getAttribute('aria-label').trim() !== '';
-			const hasPlaceholder = input.hasAttribute('placeholder') && input.getAttribute('placeholder').trim() !== '';
-            if (!hasLabel && !hasAriaLabel && !hasPlaceholder) {
-				__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a label");
-            }
-            
-            // check for presence of name attribute (crucial for form submission)
-            if (!input.name && input.type !== 'button' && input.type !== 'submit') {
-				__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a name attribute");
-            }
+        // iterate over all input elements excluding hidden and submit types
+        form.
+			querySelectorAll('input:not([type="hidden"]):not([type="submit"]), select, textarea').
+			forEach((input, inputIndex) => {
+				const tag = input.tagName.toLowerCase()
+				const inputSelector = input.id ? tag + '#' + input.id : 
+					input.name ? 
+						tag + '[name="' + input.name + '"]' : 
+						tag + ':nth-of-type(' + (inputIndex + 1) + ')';
+				
+				// check for presence of label or placeholder
+				const hasLabel = input.id ? 
+					!!document.querySelector('label[for="' + input.id + '"]') : 
+					input.closest('label') !== null;
+				const hasAriaLabel = input.hasAttribute('aria-label') && 
+					input.getAttribute('aria-label').trim() !== '';
+				const hasPlaceholder = input.hasAttribute('placeholder') && 
+					input.getAttribute('placeholder').trim() !== '';
+				if (!hasLabel && !hasAriaLabel && !hasPlaceholder) {
+					__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a label");
+				}
+				
+				// check for presence of name attribute (crucial for form submission)
+				if (!input.name && input.type !== 'button' && input.type !== 'submit') {
+					__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a name attribute");
+				}
 
-			// check for correct input type
-			if (input.type === 'text' && (input.name || input.id)) {
-				const name = (input.name || input.id || input.placeholder || '').toLowerCase();
-                if (name.includes('email') && input.type !== 'email') {
-					__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
-                }
-                if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
-                    __formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
-                }
-            }
-            
-			// check for passwords served over HTTP
-            if (input.type === 'password') {
-                if (window.location.protocol !== 'https:') {
-					__formIssues.push(
-						inputSelector + " (in " + formSelector + ") is a password field not served over HTTPS"
-					);
-                }
-            }
-        });
+				// check for correct input type
+				if (input.type === 'text' && (input.name || input.id)) {
+					const name = (input.name || input.id || input.placeholder || '').toLowerCase();
+					if (name.includes('email') && input.type !== 'email') {
+						__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
+					}
+					if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
+						__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
+					}
+				}
+				
+				// check for passwords served over HTTP
+				if (input.type === 'password') {
+					if (window.location.protocol !== 'https:') {
+						__formIssues.push(
+							inputSelector + " (in " + formSelector + ") is a password field not served over HTTPS"
+						);
+					}
+				}
+        	});
     });
     
     return __formIssues;
