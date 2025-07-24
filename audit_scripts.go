@@ -302,7 +302,7 @@ const formValidationScript = `(() => {
 
 			// check for correct input type
 			if (input.type === 'text' && (input.name || input.id)) {
-                const name = input.name?.toLowerCase() || input.id?.toLowerCase();
+				const name = (input.name || input.id || input.placeholder || '').toLowerCase();
                 if (name.includes('email') && input.type !== 'email') {
 					__formIssues.push(inputSelector + " (in " + formSelector + ") has incorrect type");
                 }
