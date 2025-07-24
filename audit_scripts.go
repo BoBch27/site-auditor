@@ -295,11 +295,9 @@ const formValidationScript = `(() => {
 				__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a label");
             }
             
-            // check for name attribute (crucial for form submission)
+            // check for presence of name attribute (crucial for form submission)
             if (!input.name && input.type !== 'button' && input.type !== 'submit') {
-				__formIssues.push(
-					inputSelector + " (in " + formSelector + ") is missing name attribute (required for form submission)"
-				);
+				__formIssues.push(inputSelector + " (in " + formSelector + ") is missing a name attribute");
             }
 
 			// check for correct input type
