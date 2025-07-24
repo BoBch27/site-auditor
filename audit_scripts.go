@@ -271,7 +271,7 @@ const formValidationScript = `(() => {
 		}
         
         // check if form has a submit button
-        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"]');
+        const hasSubmitButton = !!form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
         if (!hasSubmitButton) {
 			__formIssues.push(formSelector + " is missing a submit button");
         }
