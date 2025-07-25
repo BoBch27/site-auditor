@@ -327,3 +327,182 @@ const formValidationScript = `(() => {
     
     return __formIssues;
 })();`
+
+// script to detect frontend technologies
+const techScript = `(() => {
+	const __detectedTech = [];
+
+	const checks = {
+    	'WordPress': () => {
+			return document.body.innerHTML.includes('wp-content') || 
+				window.wp || 
+				document.querySelector('link[href*="wp-content"], link[href*="wp-includes"]') ||
+				document.querySelector('meta[name="generator"][content*="WordPress"]') ||
+				document.querySelector('link[rel="https://api.w.org/"]') ||
+				document.body.classList.contains('wordpress') ||
+				document.documentElement.innerHTML.includes('wp-json');
+		},
+		'Wix': () => {
+			return document.body.innerHTML.includes('wixstatic') || 
+				window.wixBiSession || 
+				document.querySelector('[data-wix-id]') ||
+				window.wixDevelopersAnalytics ||
+				document.querySelector('meta[name="generator"][content*="Wix"]') ||
+				document.documentElement.innerHTML.includes('wix.com');
+		},
+		'Webflow': () => {
+			return document.querySelector('[data-wf-page]') || 
+				window.Webflow || 
+				document.querySelector('script[src*="webflow"]') ||
+				document.querySelector('[data-wf-site]') ||
+				document.querySelector('link[href*="webflow.css"]') ||
+				document.documentElement.innerHTML.includes('webflow');
+		},
+		'Squarespace': () => {
+			return document.body.innerHTML.includes('squarespace') || 
+				document.body.id.includes('squarespace') || 
+				window.Y ||
+				document.querySelector('meta[name="generator"][content*="Squarespace"]') ||
+				document.querySelector('body[id*="squarespace"]') ||
+				document.querySelector('script[src*="squarespace"]');
+		},
+		'Shopify': () => {
+			return document.body.innerHTML.includes('shopify') || 
+				window.Shopify || 
+				window.ShopifyAnalytics ||
+				document.querySelector('input[name="form_type"][value*="shopify"]') ||
+				document.querySelector('meta[name="generator"][content*="Shopify"]') ||
+				document.documentElement.innerHTML.includes('shopify-section');
+		},
+		'React': () => {
+			return window.React || 
+				document.querySelector('[data-reactroot], [data-react-helmet]') ||
+				document.querySelector('script[src*="react"]') ||
+				document.querySelector('[data-react-checksum]') ||
+				(document.documentElement.innerHTML.includes('react') && 
+				(document.querySelector('[class*="react"], [id*="react"]') || 
+				document.querySelector('script').textContent.includes('React'))) ||
+				Array.from(document.querySelectorAll('*')).some(el => el.hasAttribute && 
+					Array.from(el.attributes).some(attr => attr.name.includes('data-react')));
+		},
+		'Vue': () => {
+			return window.Vue || 
+				window.__VUE__ ||
+				document.querySelector('script[src*="vue"]') ||
+				document.querySelector('[data-v-app]') ||
+				document.querySelector('[v-cloak]') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.startsWith('data-v-'))) ||
+				document.documentElement.innerHTML.includes('data-v-');
+		},
+		'Angular': () => {
+			return window.angular ||
+				window.ng ||
+				document.querySelector('[ng-version], [ng-app], app-root') ||
+				document.querySelector('script[src*="angular"]') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.startsWith('ng-'))) ||
+				document.documentElement.innerHTML.includes('ng-version') ||
+				document.querySelector('[ng-controller]');
+		},
+		'Svelte': () => {
+			return document.querySelector('[class*="svelte-"]') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.classList || []).some(cls => cls.includes('svelte-'))) ||
+				document.querySelector('script[src*="svelte"]') ||
+				document.documentElement.innerHTML.includes('svelte-');
+		},
+		'Solid.js': () => {
+			return window.solid || 
+				window.SolidJS ||
+				document.querySelector('[data-solid]') ||
+				document.querySelector('script[src*="solid"]') ||
+				document.documentElement.innerHTML.includes('solid-js') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.includes('solid')));
+		},
+		'Next': () => {
+			return document.querySelector('#__next') || 
+				window.__NEXT_DATA__ || 
+				document.querySelector('script[src*="_next"]') ||
+				document.querySelector('link[href*="_next"]') ||
+				document.querySelector('meta[name="generator"][content*="Next.js"]') ||
+				document.documentElement.innerHTML.includes('__NEXT_DATA__');
+		},
+		'Nuxt': () => {
+			return document.querySelector('#__nuxt') || 
+				window.__NUXT__ || 
+				document.querySelector('script[src*="_nuxt"]') ||
+				document.querySelector('link[href*="_nuxt"]') ||
+				document.querySelector('meta[name="generator"][content*="Nuxt.js"]') ||
+				document.documentElement.innerHTML.includes('__NUXT__');
+		},
+		'Remix': () => {
+			return window.__remixManifest || window.__remixContext ||
+				document.querySelector('[data-remix-root]') ||
+				document.querySelector('script[src*="remix"]') ||
+				document.documentElement.innerHTML.includes('__remixManifest') ||
+				document.querySelector('#remix-app') ||
+				document.querySelector('link[rel="modulepreload"][href*="remix"]');
+		},
+		'HTMX': () => {
+			return window.htmx ||
+				document.querySelector('[hx-get], [hx-post], [hx-put], [hx-delete], [hx-patch]') ||
+				document.querySelector('script[src*="htmx"]') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.startsWith('hx-'))) ||
+				document.documentElement.innerHTML.includes('htmx') ||
+				document.querySelector('[hx-trigger], [hx-target]');
+		},
+		'Alpine.js': () => {
+			return window.Alpine ||
+				document.querySelector('[x-data], [x-show], [x-if], [x-for]') ||
+				document.querySelector('script[src*="alpine"]') ||
+				Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.startsWith('x-'))) ||
+				document.documentElement.innerHTML.includes('alpine') ||
+				document.querySelector('[x-text], [x-html], [x-model]');
+		},
+		'jQuery': () => {
+			return window.jQuery || 
+				(window.$ && window.$.fn && window.$.fn.jquery) ||
+				document.querySelector('script[src*="jquery"]') ||
+				(window.$ && typeof window.$.fn === 'object' && window.$.fn.constructor.toString().includes('jQuery'));
+		},
+		'Bootstrap': () => {
+			return document.querySelector('link[href*="bootstrap"]') || 
+				document.querySelector('script[src*="bootstrap"]') ||
+				window.bootstrap || 
+				((document.querySelector('.container, .row, .col') ||
+				document.querySelector('.btn-primary, .btn-secondary, .btn-success') ||
+				document.querySelector('.navbar-nav, .navbar-brand') ||
+				document.querySelector('.modal-dialog, .modal-content') ||
+				document.querySelector('.card-body, .card-header')) && 
+				document.documentElement.innerHTML.includes('bootstrap'));
+		},
+		'Tailwind': () => {
+			const specificTailwindClasses = [
+				'bg-blue-', 'text-gray-', 'p-4', 'm-4', 'w-full', 'h-screen',
+				'space-x-', 'divide-y', 'border-gray-', 'rounded-lg', 'shadow-lg'
+			];
+			const hasSpecificClasses = specificTailwindClasses.some(cls => 
+				document.querySelector('[class*="' + cls + '"]'));
+			const hasTailwindLink = document.querySelector('link[href*="tailwind"]') || 
+				document.documentElement.innerHTML.includes('tailwindcss');
+			const hasUtilityPattern = Array.from(document.querySelectorAll('*')).some(el => {
+				const utilityCount = Array.from(el.classList || []).filter(cls => 
+					cls.match(/^(bg|text|p|m|flex|grid|w|h|space|divide|border|rounded|shadow)-/)).length;
+				return utilityCount >= 3; // at least 3 utility classes on one element
+			});
+			return hasTailwindLink || (hasSpecificClasses && hasUtilityPattern);
+		},
+  	};
+  
+	for (const [name, check] of Object.entries(checks)) {
+		if (check()) {
+			__detectedTech.push(name);
+		}
+	}
+
+	return __detectedTech;
+})();`

@@ -22,6 +22,7 @@ type auditResult struct {
 	missingHeaders   []string
 	responsiveIssues []string
 	formIssues       []string
+	techStack        []string
 	auditErrs        []string
 }
 
@@ -91,6 +92,7 @@ const (
 	missingHeaders   auditCheck = "headers"
 	responsiveIssues auditCheck = "mobile"
 	formIssues       auditCheck = "form"
+	techStack        auditCheck = "tech"
 )
 
 // extractChecksToRun takes in a comma-separated string and specifies
@@ -103,6 +105,7 @@ func extractChecksToRun(checks string) map[auditCheck]bool {
 		missingHeaders:   true,
 		responsiveIssues: true,
 		formIssues:       true,
+		techStack:        true,
 	}
 
 	if checks == "" {
@@ -298,6 +301,14 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 			err = chromedp.Evaluate(formValidationScript, &result.formIssues).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
+			}
+		}
+
+		// capture common frontend technologies used
+		if checksToRun[techStack] {
+			err = chromedp.Evaluate(techScript, &result.techStack).Do(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to detect tech stack: %w", err)
 			}
 		}
 
