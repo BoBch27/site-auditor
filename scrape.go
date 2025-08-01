@@ -15,7 +15,7 @@ import (
 // scrapeURLs queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
 func scrapeURLs(searchPrompt string) ([]string, error) {
-	checkedUrls := map[string]bool{}
+	checkedDomains := map[string]bool{}
 	urls := []string{}
 	searchQuery := url.QueryEscape(searchPrompt)
 
@@ -41,14 +41,12 @@ func scrapeURLs(searchPrompt string) ([]string, error) {
 				log.Fatal(err)
 			}
 
-			homeURL := scheme + "://" + domain + "/"
-
-			if checkedUrls[homeURL] {
+			if checkedDomains[domain] {
 				return
 			}
 
-			urls = append(urls, homeURL)
-			checkedUrls[homeURL] = true
+			urls = append(urls, scheme+"://"+domain+"/")
+			checkedDomains[domain] = true
 		})
 
 		// random 30-60 second wait to simulate human behaviour
