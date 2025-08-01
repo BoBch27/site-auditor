@@ -36,7 +36,7 @@ func scrapeURLs(searchPrompt string) ([]string, error) {
 				return
 			}
 
-			homeURL, err := stripToHome(href)
+			homeURL, err := extractDomain(href, true)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -84,20 +84,4 @@ func getDoc(searchPath string) (*goquery.Document, error) {
 	}
 
 	return doc, err
-}
-
-// stripToHome takes in a raw URL and strips all paths and queries,
-// leaving only the home page
-func stripToHome(raw string) (string, error) {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse URL: %w", err)
-	}
-
-	if u.Host == "" {
-		return "", fmt.Errorf("invalid URL: %s", raw)
-	}
-
-	// always end with slash for root
-	return u.Scheme + "://" + u.Host + "/", nil
 }

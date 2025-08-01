@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -477,15 +476,12 @@ func captureScreenshot(ctx context.Context, pageUrl string) (string, error) {
 		return "❌", fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
-	u, err := url.Parse(pageUrl)
+	domain, err := extractDomain(pageUrl)
 	if err != nil {
-		return "❌", fmt.Errorf("failed to parse URL: %w", err)
-	}
-	if u.Host == "" {
-		return "❌", fmt.Errorf("invalid URL: %s", pageUrl)
+		return "❌", err
 	}
 
-	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", strings.ToLower(u.Host))
+	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", domain)
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
 		return "❌", fmt.Errorf("failed to write screenshot: %w", err)
