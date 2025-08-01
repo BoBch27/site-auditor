@@ -2,10 +2,10 @@ package main
 
 // script to capture security
 const securityScript = `(() => {
-	let __isSecure = '✅';
+	let __isSecure = true;
 
 	if (window.location.protocol !== 'https:') {
-		__isSecure = '❌';
+		__isSecure = false;
 	}
 
 	return __isSecure;

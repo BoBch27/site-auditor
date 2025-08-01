@@ -27,3 +27,13 @@ func extractDomain(fullUrl string, withScheme ...bool) (string, error) {
 
 	return domain, nil
 }
+
+// boolToEmoji takes in a boolean and returns corresponding
+// emoji to visual inspection
+func boolToEmoji(ok bool) string {
+	if !ok {
+		return "❌"
+	}
+
+	return "✅"
+}

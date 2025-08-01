@@ -63,7 +63,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 	for _, res := range results {
 		err := writer.Write([]string{
 			res.url,
-			res.secure,
+			boolToEmoji(res.secure),
 			fmt.Sprint(res.lcp),
 			strings.Join(res.consoleErrs, ";\n"),
 			strings.Join(res.requestErrs, ";\n"),
@@ -71,7 +71,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 			strings.Join(res.responsiveIssues, ";\n"),
 			strings.Join(res.formIssues, ";\n"),
 			strings.Join(res.techStack, ";\n"),
-			res.screenshot,
+			boolToEmoji(res.screenshot),
 			strings.Join(res.auditErrs, ";\n"),
 		})
 		if err != nil {

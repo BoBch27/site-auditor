@@ -17,7 +17,7 @@ import (
 
 type auditResult struct {
 	url              string
-	secure           string
+	secure           bool
 	lcp              float64
 	consoleErrs      []string
 	requestErrs      []string
@@ -25,7 +25,7 @@ type auditResult struct {
 	responsiveIssues []string
 	formIssues       []string
 	techStack        []string
-	screenshot       string
+	screenshot       bool
 	auditErrs        []string
 }
 
@@ -479,24 +479,24 @@ func checkSecurityHeaders(resHeaders network.Headers) []string {
 
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
-func captureScreenshot(ctx context.Context, pageUrl string) (string, error) {
+func captureScreenshot(ctx context.Context, pageUrl string) (bool, error) {
 	var screenshot []byte
 
 	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
 	if err != nil {
-		return "❌", fmt.Errorf("failed to capture screenshot: %w", err)
+		return false, fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
 	domain, err := extractDomain(pageUrl)
 	if err != nil {
-		return "❌", err
+		return false, err
 	}
 
 	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", domain)
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
-		return "❌", fmt.Errorf("failed to write screenshot: %w", err)
+		return false, fmt.Errorf("failed to write screenshot: %w", err)
 	}
 
-	return "✅", nil
+	return true, nil
 }
