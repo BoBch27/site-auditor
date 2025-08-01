@@ -36,10 +36,12 @@ func scrapeURLs(searchPrompt string) ([]string, error) {
 				return
 			}
 
-			homeURL, err := extractDomain(href, true)
+			scheme, domain, err := extractUrlParts(href)
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			homeURL := scheme + "://" + domain + "/"
 
 			if slices.Contains(urls, homeURL) {
 				return

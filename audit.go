@@ -487,7 +487,7 @@ func captureScreenshot(ctx context.Context, pageUrl string) (bool, error) {
 		return false, fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
-	domain, err := extractDomain(pageUrl)
+	_, domain, err := extractUrlParts(pageUrl)
 	if err != nil {
 		return false, err
 	}
