@@ -54,7 +54,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 
 	err = writer.Write([]string{
 		"URL", "LCP (ms)", "Console Errors", "Request Errors", "Missing Headers", "Responsive Issues",
-		"Form Issues", "Detected Tech", "Audit Errors",
+		"Form Issues", "Detected Tech", "Screenshot", "Audit Errors",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
@@ -70,6 +70,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 			strings.Join(res.responsiveIssues, ";\n"),
 			strings.Join(res.formIssues, ";\n"),
 			strings.Join(res.techStack, ";\n"),
+			res.screenshot,
 			strings.Join(res.auditErrs, ";\n"),
 		})
 		if err != nil {

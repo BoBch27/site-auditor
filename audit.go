@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -23,6 +25,7 @@ type auditResult struct {
 	responsiveIssues []string
 	formIssues       []string
 	techStack        []string
+	screenshot       string
 	auditErrs        []string
 }
 
@@ -93,6 +96,7 @@ const (
 	responsiveIssues auditCheck = "mobile"
 	formIssues       auditCheck = "form"
 	techStack        auditCheck = "tech"
+	screenshot       auditCheck = "screenshot"
 )
 
 // extractChecksToRun takes in a comma-separated string and specifies
@@ -106,6 +110,7 @@ func extractChecksToRun(checks string) map[auditCheck]bool {
 		responsiveIssues: true,
 		formIssues:       true,
 		techStack:        true,
+		screenshot:       true,
 	}
 
 	if checks == "" {
@@ -324,6 +329,15 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 		return result
 	}
 
+	// capture full page screenshot
+	if checksToRun[screenshot] {
+		result.screenshot, err = captureScreenshot(timeoutCtx, url)
+		if err != nil {
+			result.auditErrs = append(result.auditErrs, err.Error())
+			return result
+		}
+	}
+
 	return result
 }
 
@@ -451,4 +465,31 @@ func checkSecurityHeaders(resHeaders network.Headers) []string {
 	}
 
 	return missingHeaders
+}
+
+// captureScreenshot takes a full page screenshot and saves it
+// to disk
+func captureScreenshot(ctx context.Context, pageUrl string) (string, error) {
+	var screenshot []byte
+
+	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
+	if err != nil {
+		return "❌", fmt.Errorf("failed to capture screenshot: %w", err)
+	}
+
+	u, err := url.Parse(pageUrl)
+	if err != nil {
+		return "❌", fmt.Errorf("failed to parse URL: %w", err)
+	}
+	if u.Host == "" {
+		return "❌", fmt.Errorf("invalid URL: %s", pageUrl)
+	}
+
+	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", strings.ToLower(u.Host))
+	err = os.WriteFile(filename, screenshot, 0644)
+	if err != nil {
+		return "❌", fmt.Errorf("failed to write screenshot: %w", err)
+	}
+
+	return "✅", nil
 }
