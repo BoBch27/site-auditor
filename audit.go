@@ -17,6 +17,7 @@ import (
 
 type auditResult struct {
 	url              string
+	secure           string
 	lcp              float64
 	consoleErrs      []string
 	requestErrs      []string
@@ -88,6 +89,7 @@ func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) (
 type auditCheck string
 
 const (
+	security         auditCheck = "security"
 	lcp              auditCheck = "lcp"
 	consoleErrs      auditCheck = "console"
 	requestErrs      auditCheck = "request"
@@ -102,6 +104,7 @@ const (
 // which audit checks to run
 func extractChecksToRun(checks string) map[auditCheck]bool {
 	checksToRun := map[auditCheck]bool{
+		security:         true,
 		lcp:              true,
 		consoleErrs:      true,
 		requestErrs:      true,
@@ -273,6 +276,14 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 
 	// perform checks
 	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		// capture site security (is HTTPS)
+		if checksToRun[security] {
+			err := chromedp.Evaluate(securityScript, &result.secure).Do(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to evaluate security: %w", err)
+			}
+		}
+
 		// calculate largest contentful paint time
 		if checksToRun[lcp] {
 			err := chromedp.Evaluate(`window.__lcp || 0`, &result.lcp).Do(ctx)

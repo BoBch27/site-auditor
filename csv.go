@@ -53,7 +53,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 	defer writer.Flush()
 
 	err = writer.Write([]string{
-		"URL", "LCP (ms)", "Console Errors", "Request Errors", "Missing Headers", "Responsive Issues",
+		"URL", "Secure", "LCP (ms)", "Console Errors", "Request Errors", "Missing Headers", "Responsive Issues",
 		"Form Issues", "Detected Tech", "Screenshot", "Audit Errors",
 	})
 	if err != nil {
@@ -63,6 +63,7 @@ func writeResultsToCSV(filename string, results []auditResult) error {
 	for _, res := range results {
 		err := writer.Write([]string{
 			res.url,
+			res.secure,
 			fmt.Sprint(res.lcp),
 			strings.Join(res.consoleErrs, ";\n"),
 			strings.Join(res.requestErrs, ";\n"),

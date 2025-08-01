@@ -1,5 +1,16 @@
 package main
 
+// script to capture security
+const securityScript = `(() => {
+	let __isSecure = '✅';
+
+	if (window.location.protocol !== 'https:') {
+		__isSecure = '❌';
+	}
+
+	return __isSecure;
+})();`
+
 // script to collect LCP time
 const lcpScript = `(() => {
 	window.__lcp = 0;
