@@ -242,6 +242,11 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 			fmt.Println("[warning]: page's idle check timed out")
 		}
 
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to wait for page to settle: %w", err)
+		}
+
 		return nil
 	}))
 	if err != nil {
