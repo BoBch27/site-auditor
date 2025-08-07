@@ -341,21 +341,19 @@ const techScript = `(() => {
 
 	const checks = {
     	'WordPress': () => {
-			return document.body.innerHTML.includes('wp-content') || 
-				window.wp || 
+			return window.wp || 
 				document.querySelector('link[href*="wp-content"], link[href*="wp-includes"]') ||
 				document.querySelector('meta[name="generator"][content*="WordPress"]') ||
 				document.querySelector('link[rel="https://api.w.org/"]') ||
 				document.body.classList.contains('wordpress') ||
-				document.documentElement.innerHTML.includes('wp-json');
+				document.querySelector('script[src*="wp-content"], script[src*="wp-includes"]');
 		},
 		'Wix': () => {
-			return document.body.innerHTML.includes('wixstatic') || 
-				window.wixBiSession || 
+			return window.wixBiSession || 
 				document.querySelector('[data-wix-id]') ||
 				window.wixDevelopersAnalytics ||
 				document.querySelector('meta[name="generator"][content*="Wix"]') ||
-				document.documentElement.innerHTML.includes('wix.com');
+				document.querySelector('script[src*="wixstatic"], link[href*="wixstatic"]');
 		},
 		'Webflow': () => {
 			return document.querySelector('[data-wf-page]') || 
@@ -363,32 +361,34 @@ const techScript = `(() => {
 				document.querySelector('script[src*="webflow"]') ||
 				document.querySelector('[data-wf-site]') ||
 				document.querySelector('link[href*="webflow.css"]') ||
-				document.documentElement.innerHTML.includes('webflow');
+				(document.querySelector('script[src*="webflow.js"]') && 
+					document.querySelector('[data-wf-page], [data-wf-site]'));
 		},
 		'Squarespace': () => {
-			return document.body.innerHTML.includes('squarespace') || 
-				document.body.id.includes('squarespace') || 
+			return document.querySelector('body[id*="squarespace"]') || 
 				window.Y ||
 				document.querySelector('meta[name="generator"][content*="Squarespace"]') ||
-				document.querySelector('body[id*="squarespace"]') ||
-				document.querySelector('script[src*="squarespace"]');
+				document.querySelector('script[src*="squarespace"]') ||
+				(document.querySelector('link[href*="squarespaceassets"], script[src*="squarespaceassets"]') &&
+					document.querySelector('.sqs-', '[class*="sqs-"]'));
 		},
 		'Shopify': () => {
-			return document.body.innerHTML.includes('shopify') || 
-				window.Shopify || 
+			return window.Shopify || 
 				window.ShopifyAnalytics ||
 				document.querySelector('input[name="form_type"][value*="shopify"]') ||
 				document.querySelector('meta[name="generator"][content*="Shopify"]') ||
-				document.documentElement.innerHTML.includes('shopify-section');
+				document.querySelector('script[src*="shopifycdn"], script[src*="shopify.com"]') ||
+				(document.querySelector('form[action*="cart/add"]') && 
+					document.querySelector('[name="id"], [data-product-id]'));
 		},
 		'React': () => {
 			return window.React || 
 				document.querySelector('[data-reactroot], [data-react-helmet]') ||
 				document.querySelector('script[src*="react"]') ||
 				document.querySelector('[data-react-checksum]') ||
-				(document.documentElement.innerHTML.includes('react') && 
-				(document.querySelector('[class*="react"], [id*="react"]') || 
-				document.querySelector('script').textContent.includes('React'))) ||
+				(document.documentElement.innerHTML.includes('react-') && 
+					(document.querySelector('[class*="react-"], [id*="react-"]') || 
+						document.querySelector('script').textContent.includes('React'))) ||
 				Array.from(document.querySelectorAll('*')).some(el => el.hasAttribute && 
 					Array.from(el.attributes).some(attr => attr.name.includes('data-react')));
 		},
@@ -400,17 +400,31 @@ const techScript = `(() => {
 				document.querySelector('[v-cloak]') ||
 				Array.from(document.querySelectorAll('*')).some(el => 
 					Array.from(el.attributes || []).some(attr => attr.name.startsWith('data-v-'))) ||
-				document.documentElement.innerHTML.includes('data-v-');
+				document.documentElement.innerHTML.includes('data-v-') ||
+				document.querySelector('[v-if], [v-for], [v-show], [v-model]');
 		},
 		'Angular': () => {
+			const hasAngularGlobals = window.angular || window.ng;
+			const hasAngularElements = document.querySelector('[ng-version], [ng-app], app-root');
+			const hasAngularScripts = document.querySelector('script[src*="angular"]');
+			const hasAngularAttrsInDoc = Array.from(document.querySelectorAll('*')).some(el => 
+					Array.from(el.attributes || []).some(attr => attr.name.startsWith('ng-')));
+			const hasAngularInHTML = document.documentElement.innerHTML.includes('ng-version');
+			const hasAngularController = document.querySelector('[ng-controller]');
+			
+			// require strong indicators (globals, version, app-root) OR multiple weaker ones
+			return hasAngularGlobals || hasAngularElements || hasAngularScripts ||
+					(hasAngularController && hasAngularAttrsInDoc) ||
+					(hasAngularInHTML && hasAngularAttrsInDoc);
+			
 			return window.angular ||
 				window.ng ||
 				document.querySelector('[ng-version], [ng-app], app-root') ||
 				document.querySelector('script[src*="angular"]') ||
-				Array.from(document.querySelectorAll('*')).some(el => 
-					Array.from(el.attributes || []).some(attr => attr.name.startsWith('ng-'))) ||
-				document.documentElement.innerHTML.includes('ng-version') ||
-				document.querySelector('[ng-controller]');
+				((document.documentElement.innerHTML.includes('ng-version') || 
+					document.querySelector('[ng-controller]')) && 
+						Array.from(document.querySelectorAll('*')).some(el => 
+							Array.from(el.attributes || []).some(attr => attr.name.startsWith('ng-'))));
 		},
 		'Svelte': () => {
 			return document.querySelector('[class*="svelte-"]') ||
@@ -445,7 +459,8 @@ const techScript = `(() => {
 				document.documentElement.innerHTML.includes('__NUXT__');
 		},
 		'Remix': () => {
-			return window.__remixManifest || window.__remixContext ||
+			return window.__remixManifest || 
+				window.__remixContext ||
 				document.querySelector('[data-remix-root]') ||
 				document.querySelector('script[src*="remix"]') ||
 				document.documentElement.innerHTML.includes('__remixManifest') ||
@@ -458,7 +473,6 @@ const techScript = `(() => {
 				document.querySelector('script[src*="htmx"]') ||
 				Array.from(document.querySelectorAll('*')).some(el => 
 					Array.from(el.attributes || []).some(attr => attr.name.startsWith('hx-'))) ||
-				document.documentElement.innerHTML.includes('htmx') ||
 				document.querySelector('[hx-trigger], [hx-target]');
 		},
 		'Alpine.js': () => {
@@ -467,41 +481,57 @@ const techScript = `(() => {
 				document.querySelector('script[src*="alpine"]') ||
 				Array.from(document.querySelectorAll('*')).some(el => 
 					Array.from(el.attributes || []).some(attr => attr.name.startsWith('x-'))) ||
-				document.documentElement.innerHTML.includes('alpine') ||
 				document.querySelector('[x-text], [x-html], [x-model]');
 		},
 		'jQuery': () => {
 			return window.jQuery || 
 				(window.$ && window.$.fn && window.$.fn.jquery) ||
 				document.querySelector('script[src*="jquery"]') ||
-				(window.$ && typeof window.$.fn === 'object' && window.$.fn.constructor.toString().includes('jQuery'));
+				(window.$ && typeof window.$.fn === 'object' && 
+					window.$.fn.constructor.toString().includes('jQuery'));
 		},
 		'Bootstrap': () => {
-			return document.querySelector('link[href*="bootstrap"]') || 
+			const hasBootstrapLink = document.querySelector('link[href*="bootstrap"]') || 
 				document.querySelector('script[src*="bootstrap"]') ||
-				window.bootstrap || 
-				((document.querySelector('.container, .row, .col') ||
-				document.querySelector('.btn-primary, .btn-secondary, .btn-success') ||
-				document.querySelector('.navbar-nav, .navbar-brand') ||
-				document.querySelector('.modal-dialog, .modal-content') ||
-				document.querySelector('.card-body, .card-header')) && 
-				document.documentElement.innerHTML.includes('bootstrap'));
+				window.bootstrap;
+			const hasBootstrapGrid = document.querySelector('.container .row .col, .container-fluid .row .col');
+			const hasBootstrapComponents = document.querySelector('.btn-primary, .btn-secondary') ||
+				document.querySelector('.navbar-nav .nav-link') ||
+				document.querySelector('.modal-dialog .modal-content') ||
+				document.querySelector('.card-header, .card-body, .card-footer');
+			const hasBootstrapUtils = document.querySelector('.d-flex, .d-none, .d-block') ||
+				document.querySelector('.text-center, .text-left, .text-right') ||
+				document.querySelector('.mb-3, .mt-3, .p-3');
+			
+			// require either explicit Bootstrap files OR multiple strong indicators
+			return hasBootstrapLink || 
+				(hasBootstrapGrid && hasBootstrapComponents) ||
+				(hasBootstrapComponents && hasBootstrapUtils);
 		},
 		'Tailwind': () => {
-			const specificTailwindClasses = [
-				'bg-blue-', 'text-gray-', 'p-4', 'm-4', 'w-full', 'h-screen',
-				'space-x-', 'divide-y', 'border-gray-', 'rounded-lg', 'shadow-lg'
-			];
-			const hasSpecificClasses = specificTailwindClasses.some(cls => 
-				document.querySelector('[class*="' + cls + '"]'));
-			const hasTailwindLink = document.querySelector('link[href*="tailwind"]') || 
-				document.documentElement.innerHTML.includes('tailwindcss');
-			const hasUtilityPattern = Array.from(document.querySelectorAll('*')).some(el => {
-				const utilityCount = Array.from(el.classList || []).filter(cls => 
-					cls.match(/^(bg|text|p|m|flex|grid|w|h|space|divide|border|rounded|shadow)-/)).length;
-				return utilityCount >= 3; // at least 3 utility classes on one element
+			const hasTailwindLink = document.querySelector('link[href*="tailwind"]');
+			const hasNumberedUtilities = document.querySelector(
+				'[class*="text-sm"], [class*="text-lg"], [class*="text-xl"], ' +
+				'[class*="p-4"], [class*="m-4"], [class*="w-64"], [class*="h-64"], ' +
+				'[class*="bg-blue-500"], [class*="bg-gray-100"]'
+			);
+			const hasResponsivePrefixes = Array.from(document.querySelectorAll('*')).some(el =>
+				Array.from(el.classList || []).some(cls => 
+				cls.match(/^(sm|md|lg|xl|2xl):/))
+			);
+			const hasHighUtilityDensity = Array.from(document.querySelectorAll('*')).some(el => {
+				const classes = Array.from(el.classList || []);
+				const utilityCount = classes.filter(cls => 
+				cls.match(/^(bg|text|p|m|flex|grid|w|h|space|divide|border|rounded|shadow)-/) ||
+				cls.match(/^(sm|md|lg|xl):/)).length;
+				return utilityCount >= 4; // 4+ utility classes is very Tailwind-like
 			});
-			return hasTailwindLink || (hasSpecificClasses && hasUtilityPattern);
+			
+			// require either explicit Tailwind link OR multiple strong patterns
+			return hasTailwindLink || 
+				(hasNumberedUtilities && hasResponsivePrefixes) ||
+				(hasNumberedUtilities && hasHighUtilityDensity) ||
+				(hasResponsivePrefixes && hasHighUtilityDensity);
 		},
   	};
   
