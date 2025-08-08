@@ -252,7 +252,7 @@ const responsiveScript = `(() => {
 })()`
 
 // script to collect form issues
-const formValidationScript = `(() => {
+const formScript = `(() => {
     const __formIssues = [];
     
     // iterate over all forms in the document

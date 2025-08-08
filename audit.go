@@ -318,7 +318,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 
 		// capture form issues
 		if checksToRun[formIssues] {
-			err = chromedp.Evaluate(formValidationScript, &result.formIssues).Do(ctx)
+			err = chromedp.Evaluate(formScript, &result.formIssues).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
 			}
