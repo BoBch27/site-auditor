@@ -320,6 +320,9 @@ const formValidationScript = `(() => {
 			if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
 				__formIssues.push(inputSelector + " has incorrect type");
 			}
+			if ((name.includes('password') || name.includes('secret')) && input.type !== 'password') {
+				__formIssues.push(inputSelector + " has incorrect type");
+			}
 		}
 		
 		// check for passwords served over HTTP
