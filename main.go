@@ -7,50 +7,64 @@ import (
 )
 
 func main() {
-	// define flags
-	search := flag.String("search", "", "Search prompt to scrape URLs for")
-	input := flag.String("input", "", "Path to input CSV file with URLs")
-	output := flag.String("output", "report.csv", "Path to output CSV report")
-	checks := flag.String("checks", "", "Specify which checks to run")
-
-	// parse flags
-	flag.Parse()
+	config := parseFlags()
 
 	// check specified flags
-	if *input == "" {
-		if *search == "" {
+	if config.input == "" {
+		if config.search == "" {
 			log.Fatal("neither input file nor search prompt are specified")
 		}
 	} else {
-		if *search != "" {
+		if config.search != "" {
 			log.Fatal("only one of input file or search prompt can be specified")
 		}
 	}
 
 	// extract urls
 	// get URLs
-	var urls []string
 	var err error
-	if *search != "" {
+	if config.search != "" {
 		// scrape URLs from Google search
-		urls, err = scrapeURLs(*search)
+		config.urls, err = scrapeURLs(config.search)
 	} else {
 		// extract URLs from CSV
-		urls, err = readURLsFromCSV(*input)
+		config.urls, err = readURLsFromCSV(config.input)
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(context.Background(), urls, *checks)
+	audits, err := auditWebsites(context.Background(), config.urls, config.checks)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// write audit results
-	err = writeResultsToCSV(*output, audits)
+	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+type config struct {
+	search string
+	input  string
+	output string
+	checks string
+	urls   []string
+}
+
+// parseFlags parses command line flags and returns a config
+func parseFlags() config {
+	var config config
+
+	// define flags
+	flag.StringVar(&config.search, "search", "", "Search prompt to scrape URLs for")
+	flag.StringVar(&config.input, "input", "", "Path to input CSV file with URLs")
+	flag.StringVar(&config.output, "output", "report.csv", "Path to output CSV report")
+	flag.StringVar(&config.checks, "checks", "", "Comma-separated checks to run (security,lcp,console,request,headers,mobile,form,tech,screenshot). Empty = all checks")
+
+	flag.Parse()
+	return config
 }
