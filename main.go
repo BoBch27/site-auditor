@@ -3,26 +3,19 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 )
 
 func main() {
 	config := parseFlags()
 
-	// check specified flags
-	if config.input == "" {
-		if config.search == "" {
-			log.Fatal("neither input file nor search prompt are specified")
-		}
-	} else {
-		if config.search != "" {
-			log.Fatal("only one of input file or search prompt can be specified")
-		}
+	err := config.validate()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// extract urls
-	// get URLs
-	var err error
 	if config.search != "" {
 		// scrape URLs from Google search
 		config.urls, err = scrapeURLs(config.search)
@@ -67,4 +60,17 @@ func parseFlags() config {
 
 	flag.Parse()
 	return config
+}
+
+// validate ensures the configuration is valid
+func (c *config) validate() error {
+	if c.input == "" && c.search == "" {
+		return fmt.Errorf("neither input file nor search prompt are specified")
+	}
+
+	if c.input != "" && c.search != "" {
+		return fmt.Errorf("only one of input file or search prompt can be specified")
+	}
+
+	return nil
 }
