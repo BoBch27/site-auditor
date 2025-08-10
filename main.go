@@ -15,14 +15,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// extract urls
-	if config.search != "" {
-		// scrape URLs from Google search
-		config.urls, err = scrapeURLs(config.search)
-	} else {
-		// extract URLs from CSV
-		config.urls, err = readURLsFromCSV(config.input)
-	}
+	err = config.extractURLs()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,4 +66,19 @@ func (c *config) validate() error {
 	}
 
 	return nil
+}
+
+// extractURLs populates the URLs field based on input method
+func (c *config) extractURLs() error {
+	var err error
+
+	if c.search != "" {
+		// scrape URLs from Google search
+		c.urls, err = scrapeURLs(c.search)
+	} else {
+		// extract URLs from CSV
+		c.urls, err = readURLsFromCSV(c.input)
+	}
+
+	return err
 }
