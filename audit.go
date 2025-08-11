@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -16,24 +15,34 @@ import (
 )
 
 type auditResult struct {
-	url              string
-	secure           bool
-	lcp              float64
-	consoleErrs      []string
-	requestErrs      []string
-	missingHeaders   []string
-	responsiveIssues []string
-	formIssues       []string
-	techStack        []string
-	screenshot       bool
-	auditErrs        []string
+	url       string
+	checks    auditChecks
+	auditErrs []string
+}
+type auditChecks struct {
+	secure           auditCheck[bool]
+	lcp              auditCheck[float64]
+	consoleErrs      auditCheck[[]string]
+	requestErrs      auditCheck[[]string]
+	missingHeaders   auditCheck[[]string]
+	responsiveIssues auditCheck[[]string]
+	formIssues       auditCheck[[]string]
+	techStack        auditCheck[[]string]
+	screenshot       auditCheck[bool]
+}
+type auditCheck[T interface{}] struct {
+	enabled bool
+	result  T
 }
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
 func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) ([]auditResult, error) {
 	// extract specified checks to run
-	checksToRun := extractChecksToRun(specifiedChecks)
+	checksToRun, err := extractChecksToRun(specifiedChecks)
+	if err != nil {
+		return nil, err
+	}
 
 	// setup browser options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -56,7 +65,7 @@ func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) (
 
 	// open browser with a blank page and wait to initialise,
 	// done so performance metrics aren’t skewed by cold start overhead
-	err := chromedp.Run(browserCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+	err = chromedp.Run(browserCtx, chromedp.ActionFunc(func(ctx context.Context) error {
 		err := chromedp.Navigate("about:blank").Do(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to initialise browser: %w", err)
@@ -86,52 +95,60 @@ func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) (
 	return results, nil
 }
 
-type auditCheck string
-
-const (
-	security         auditCheck = "security"
-	lcp              auditCheck = "lcp"
-	consoleErrs      auditCheck = "console"
-	requestErrs      auditCheck = "request"
-	missingHeaders   auditCheck = "headers"
-	responsiveIssues auditCheck = "mobile"
-	formIssues       auditCheck = "form"
-	techStack        auditCheck = "tech"
-	screenshot       auditCheck = "screenshot"
-)
-
 // extractChecksToRun takes in a comma-separated string and specifies
 // which audit checks to run
-func extractChecksToRun(checks string) map[auditCheck]bool {
-	checksToRun := map[auditCheck]bool{
-		security:         true,
-		lcp:              true,
-		consoleErrs:      true,
-		requestErrs:      true,
-		missingHeaders:   true,
-		responsiveIssues: true,
-		formIssues:       true,
-		techStack:        true,
-		screenshot:       true,
+func extractChecksToRun(checksStr string) (auditChecks, error) {
+	// if no checks specified, return all enabled
+	if checksStr == "" {
+		return auditChecks{
+			secure:           auditCheck[bool]{enabled: true},
+			lcp:              auditCheck[float64]{enabled: true},
+			consoleErrs:      auditCheck[[]string]{enabled: true},
+			requestErrs:      auditCheck[[]string]{enabled: true},
+			missingHeaders:   auditCheck[[]string]{enabled: true},
+			responsiveIssues: auditCheck[[]string]{enabled: true},
+			formIssues:       auditCheck[[]string]{enabled: true},
+			techStack:        auditCheck[[]string]{enabled: true},
+			screenshot:       auditCheck[bool]{enabled: true},
+		}, nil
 	}
 
-	if checks == "" {
-		return checksToRun
+	// disable all, then enable specified ones
+	checks := auditChecks{}
+
+	for check := range strings.SplitSeq(checksStr, ",") {
+		check = strings.TrimSpace(check)
+		switch check {
+		case "security":
+			checks.secure.enabled = true
+		case "lcp":
+			checks.lcp.enabled = true
+		case "console":
+			checks.consoleErrs.enabled = true
+		case "request":
+			checks.requestErrs.enabled = true
+		case "headers":
+			checks.missingHeaders.enabled = true
+		case "mobile":
+			checks.responsiveIssues.enabled = true
+		case "form":
+			checks.formIssues.enabled = true
+		case "tech":
+			checks.techStack.enabled = true
+		case "screenshot":
+			checks.screenshot.enabled = true
+		default:
+			return checks, fmt.Errorf("unknown check: %s", check)
+		}
 	}
 
-	checksArr := strings.Split(checks, ",")
-
-	for check := range checksToRun {
-		checksToRun[check] = slices.Contains(checksArr, string(check))
-	}
-
-	return checksToRun
+	return checks, nil
 }
 
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bool) auditResult {
-	result := auditResult{url: url}
+func auditWebsite(ctx context.Context, url string, checksToRun auditChecks) auditResult {
+	result := auditResult{url: url, checks: checksToRun}
 
 	// create new window context
 	windowCtx, cancelWindow := chromedp.NewContext(ctx)
@@ -168,14 +185,14 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 			return fmt.Errorf("failed to enable page domain: %w", err)
 		}
 
-		if checksToRun[lcp] {
+		if checksToRun.lcp.enabled {
 			_, err = page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject LCP script: %w", err)
 			}
 		}
 
-		if checksToRun[consoleErrs] || checksToRun[requestErrs] {
+		if checksToRun.consoleErrs.enabled || checksToRun.requestErrs.enabled {
 			_, err = page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject error script: %w", err)
@@ -270,63 +287,63 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 	}
 
 	// capture missing security headers
-	if checksToRun[missingHeaders] {
-		result.missingHeaders = checkSecurityHeaders(nr.Headers)
+	if checksToRun.missingHeaders.enabled {
+		result.checks.missingHeaders.result = checkSecurityHeaders(nr.Headers)
 	}
 
 	// perform checks
 	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
 		// capture site security (is HTTPS)
-		if checksToRun[security] {
-			err := chromedp.Evaluate(securityScript, &result.secure).Do(ctx)
+		if checksToRun.secure.enabled {
+			err := chromedp.Evaluate(securityScript, &result.checks.secure.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate security: %w", err)
 			}
 		}
 
 		// calculate largest contentful paint time
-		if checksToRun[lcp] {
-			err := chromedp.Evaluate(`window.__lcp || 0`, &result.lcp).Do(ctx)
+		if checksToRun.lcp.enabled {
+			err := chromedp.Evaluate(`window.__lcp || 0`, &result.checks.lcp.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate LCP: %w", err)
 			}
 		}
 
 		// capture mobile responsiveness issues
-		if checksToRun[responsiveIssues] {
-			err = chromedp.Evaluate(responsiveScript, &result.responsiveIssues).Do(ctx)
+		if checksToRun.responsiveIssues.enabled {
+			err = chromedp.Evaluate(responsiveScript, &result.checks.responsiveIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate mobile responsiveness: %w", err)
 			}
 		}
 
 		// collect console errors and warnings
-		if checksToRun[consoleErrs] {
-			err = chromedp.Evaluate(`window.__console_errors || []`, &result.consoleErrs).Do(ctx)
+		if checksToRun.consoleErrs.enabled {
+			err = chromedp.Evaluate(`window.__console_errors || []`, &result.checks.consoleErrs.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate console errors: %w", err)
 			}
 		}
 
 		// collect failed requests
-		if checksToRun[requestErrs] {
-			err = chromedp.Evaluate(`window.__request_errors || []`, &result.requestErrs).Do(ctx)
+		if checksToRun.requestErrs.enabled {
+			err = chromedp.Evaluate(`window.__request_errors || []`, &result.checks.requestErrs.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate request errors: %w", err)
 			}
 		}
 
 		// capture form issues
-		if checksToRun[formIssues] {
-			err = chromedp.Evaluate(formScript, &result.formIssues).Do(ctx)
+		if checksToRun.formIssues.enabled {
+			err = chromedp.Evaluate(formScript, &result.checks.formIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
 			}
 		}
 
 		// capture common frontend technologies used
-		if checksToRun[techStack] {
-			err = chromedp.Evaluate(techScript, &result.techStack).Do(ctx)
+		if checksToRun.techStack.enabled {
+			err = chromedp.Evaluate(techScript, &result.checks.techStack.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to detect tech stack: %w", err)
 			}
@@ -340,8 +357,8 @@ func auditWebsite(ctx context.Context, url string, checksToRun map[auditCheck]bo
 	}
 
 	// capture full page screenshot
-	if checksToRun[screenshot] {
-		result.screenshot, err = captureScreenshot(timeoutCtx, url)
+	if checksToRun.screenshot.enabled {
+		result.checks.screenshot.result, err = captureScreenshot(timeoutCtx, url)
 		if err != nil {
 			result.auditErrs = append(result.auditErrs, err.Error())
 			return result
