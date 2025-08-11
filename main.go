@@ -21,7 +21,7 @@ func main() {
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(context.Background(), config.urls, config.checks)
+	audits, err := auditWebsites(context.Background(), config.urls, config.checks, config.important)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,11 +34,12 @@ func main() {
 }
 
 type config struct {
-	search string
-	input  string
-	output string
-	checks string
-	urls   []string
+	search    string
+	input     string
+	output    string
+	checks    string
+	important bool
+	urls      []string
 }
 
 // parseFlags parses command line flags and returns a config
@@ -50,6 +51,7 @@ func parseFlags() config {
 	flag.StringVar(&config.input, "input", "", "Path to input CSV file with URLs")
 	flag.StringVar(&config.output, "output", "report.csv", "Path to output CSV report")
 	flag.StringVar(&config.checks, "checks", "", "Comma-separated checks to run (security,lcp,console,request,headers,mobile,form,tech,screenshot). Empty = all checks")
+	flag.BoolVar(&config.important, "important", false, "Run only critical/important checks (faster)")
 
 	flag.Parse()
 	return config

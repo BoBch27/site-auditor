@@ -109,7 +109,7 @@ const errScript = `(() => {
 })();`
 
 // script to collect mobile responsiveness issues
-const responsiveScript = `(() => {
+const responsiveScript = `((importantOnly = false) => {
 	const __responsiveIssues = [];
 	let score = 100;
 
@@ -125,6 +125,35 @@ const responsiveScript = `(() => {
 	} else {
 		__responsiveIssues.push("No viewport meta tag");
 		score -= 30;
+	}
+
+	// check for horizontal scrollbar
+	const scrollThreshold = importantOnly ? 
+		(document.documentElement.clientWidth + 3) : document.documentElement.clientWidth;
+	const horizontalBar = document.documentElement.scrollWidth > scrollThreshold;
+	if (horizontalBar) {
+		__responsiveIssues.push("Has horizontal scrollbar");
+		score -= 25;
+	}
+
+	// check for small tap targets (links, buttons, etc.)
+	const interactiveElements = Array.from(
+		document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
+	);
+	const smallTapTargets = interactiveElements
+		.filter(el => {
+			if (el.offsetParent === null) return false; // skip invisible elements
+			const rect = el.getBoundingClientRect();
+			return rect.width < 44 && rect.height < 44 && rect.width > 0 && rect.height > 0;
+		}).length;
+	if (smallTapTargets > 0) {
+		__responsiveIssues.push("Has small tap targets");
+		score -= Math.min(12, smallTapTargets * 1.2);
+	}
+
+	// early return for important-only checks
+	if (importantOnly) {
+		return __responsiveIssues;
 	}
 
 	// check for media queries in stylesheets
@@ -147,13 +176,6 @@ const responsiveScript = `(() => {
 			score -= 25;
 		}
 	}
-	
-	// check for horizontal scrollbar
-	const horizontalBar = document.documentElement.scrollWidth > document.documentElement.clientWidth;
-	if (horizontalBar) {
-		__responsiveIssues.push("Has horizontal scrollbar");
-		score -= 25;
-	}
 
 	// check for horizontally overflowing elements
     const overflowingElements = Array.from(document.querySelectorAll("*"))
@@ -166,20 +188,7 @@ const responsiveScript = `(() => {
 		score -= Math.min(15, overflowingElements * 2);
 	}
 
-	// check for small and crowded tap targets (links, buttons, etc.)
-	const interactiveElements = Array.from(
-		document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
-	);
-	const smallTapTargets = interactiveElements
-		.filter(el => {
-			if (el.offsetParent === null) return false; // skip invisible elements
-			const rect = el.getBoundingClientRect();
-			return rect.width < 44 && rect.height < 44 && rect.width > 0 && rect.height > 0;
-		}).length;
-	if (smallTapTargets > 0) {
-		__responsiveIssues.push("Has small tap targets");
-		score -= Math.min(12, smallTapTargets * 1.2);
-	}
+	// check for crowded tap targets (links, buttons, etc.)
 	const crowdedTapTargets = interactiveElements
 		.filter(el => {
 			if (el.offsetParent === null) return false; // skip invisible elements
@@ -249,12 +258,52 @@ const responsiveScript = `(() => {
 	__responsiveIssues.push("Score: " + finalScore + " " + scoreType);
 
 	return __responsiveIssues;
-})()`
+})`
 
 // script to collect form issues
-const formScript = `(() => {
+const formScript = `((importantOnly = false) => {
     const __formIssues = [];
-    
+
+	// iterate over all input elements excluding hidden and submit types for important checks
+	const visibleInputs = document.querySelectorAll(
+		'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea'
+	);
+	visibleInputs.forEach((input, inputIndex) => {
+		const tag = input.tagName.toLowerCase();
+		const inputSelector = input.id ? tag + '#' + input.id : 
+			input.name ? 
+				tag + '[name="' + input.name + '"]' : 
+				tag + ':nth-of-type(' + (inputIndex + 1) + ')';
+
+		// check for incorrect input type
+		if (input.type === 'text' && (input.name || input.id)) {
+			const name = (input.name || input.id || input.placeholder || '').toLowerCase();
+			if (name.includes('email') && input.type !== 'email') {
+				__formIssues.push(inputSelector + " has incorrect type");
+			}
+			if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
+				__formIssues.push(inputSelector + " has incorrect type");
+			}
+			if ((name.includes('password') || name.includes('secret')) && input.type !== 'password') {
+				__formIssues.push(inputSelector + " has incorrect type");
+			}
+		}
+		
+		// check for passwords served over HTTP
+		if (input.type === 'password') {
+			if (window.location.protocol !== 'https:') {
+				__formIssues.push(
+					inputSelector + " is a password field not served over HTTPS"
+				);
+			}
+		}
+	});
+
+	// early return for important-only checks
+	if (importantOnly) {
+		return __formIssues;
+	}
+
     // iterate over all forms in the document
     document.querySelectorAll('form').forEach((form, formIndex) => {
         const formSelector = form.id ? 
@@ -284,10 +333,8 @@ const formScript = `(() => {
 		}
     });
 
-	// iterate over all input elements excluding hidden and submit types
-	document.querySelectorAll(
-		'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea'
-	).forEach((input, inputIndex) => {
+	// iterate over all input elements excluding hidden and submit types for further checks
+	visibleInputs.forEach((input, inputIndex) => {
 		const tag = input.tagName.toLowerCase();
 		const inputSelector = input.id ? tag + '#' + input.id : 
 			input.name ? 
@@ -310,33 +357,10 @@ const formScript = `(() => {
 		if (!input.name && input.type !== 'button' && input.type !== 'submit') {
 			__formIssues.push(inputSelector + " is missing a name attribute");
 		}
-
-		// check for correct input type
-		if (input.type === 'text' && (input.name || input.id)) {
-			const name = (input.name || input.id || input.placeholder || '').toLowerCase();
-			if (name.includes('email') && input.type !== 'email') {
-				__formIssues.push(inputSelector + " has incorrect type");
-			}
-			if ((name.includes('tel') || name.includes('phone')) && input.type !== 'tel') {
-				__formIssues.push(inputSelector + " has incorrect type");
-			}
-			if ((name.includes('password') || name.includes('secret')) && input.type !== 'password') {
-				__formIssues.push(inputSelector + " has incorrect type");
-			}
-		}
-		
-		// check for passwords served over HTTP
-		if (input.type === 'password') {
-			if (window.location.protocol !== 'https:') {
-				__formIssues.push(
-					inputSelector + " is a password field not served over HTTPS"
-				);
-			}
-		}
 	});
     
     return __formIssues;
-})();`
+})`
 
 // script to detect frontend technologies
 const techScript = `(() => {

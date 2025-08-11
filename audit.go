@@ -37,7 +37,12 @@ type auditCheck[T interface{}] struct {
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
-func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) ([]auditResult, error) {
+func auditWebsites(
+	ctx context.Context,
+	urls []string,
+	specifiedChecks string,
+	importantCheck bool,
+) ([]auditResult, error) {
 	// extract specified checks to run
 	checksToRun, err := extractChecksToRun(specifiedChecks)
 	if err != nil {
@@ -88,8 +93,7 @@ func auditWebsites(ctx context.Context, urls []string, specifiedChecks string) (
 	for i, url := range urls {
 		// audit each website
 		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		results[i] = auditWebsite(browserCtx, url, checksToRun)
-
+		results[i] = auditWebsite(browserCtx, url, checksToRun, importantCheck)
 	}
 
 	return results, nil
@@ -147,7 +151,7 @@ func extractChecksToRun(checksStr string) (auditChecks, error) {
 
 // auditWebsite opens the URL in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, url string, checksToRun auditChecks) auditResult {
+func auditWebsite(ctx context.Context, url string, checksToRun auditChecks, importantChecks bool) auditResult {
 	result := auditResult{url: url, checks: checksToRun}
 
 	// create new window context
@@ -311,7 +315,8 @@ func auditWebsite(ctx context.Context, url string, checksToRun auditChecks) audi
 
 		// capture mobile responsiveness issues
 		if checksToRun.responsiveIssues.enabled {
-			err = chromedp.Evaluate(responsiveScript, &result.checks.responsiveIssues.result).Do(ctx)
+			script := fmt.Sprintf("%s(%t)", responsiveScript, importantChecks)
+			err = chromedp.Evaluate(script, &result.checks.responsiveIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate mobile responsiveness: %w", err)
 			}
@@ -335,7 +340,8 @@ func auditWebsite(ctx context.Context, url string, checksToRun auditChecks) audi
 
 		// capture form issues
 		if checksToRun.formIssues.enabled {
-			err = chromedp.Evaluate(formScript, &result.checks.formIssues.result).Do(ctx)
+			script := fmt.Sprintf("%s(%t)", formScript, importantChecks)
+			err = chromedp.Evaluate(script, &result.checks.formIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
 			}
