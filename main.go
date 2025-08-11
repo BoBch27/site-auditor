@@ -7,6 +7,15 @@ import (
 	"log"
 )
 
+type config struct {
+	search    string
+	input     string
+	output    string
+	checks    string
+	important bool
+	urls      []string
+}
+
 func main() {
 	config := parseFlags()
 
@@ -31,15 +40,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-type config struct {
-	search    string
-	input     string
-	output    string
-	checks    string
-	important bool
-	urls      []string
 }
 
 // parseFlags parses command line flags and returns a config
