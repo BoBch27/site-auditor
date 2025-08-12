@@ -147,7 +147,7 @@ const responsiveScript = `((importantOnly = false) => {
 			return rect.width < 44 && rect.height < 44 && rect.width > 0 && rect.height > 0;
 		}).length;
 	if (smallTapTargets > 0) {
-		__responsiveIssues.push("Has small tap targets");
+		__responsiveIssues.push("Has " + smallTapTargets + " small tap targets");
 		score -= Math.min(12, smallTapTargets * 1.2);
 	}
 
@@ -184,7 +184,7 @@ const responsiveScript = `((importantOnly = false) => {
 			return el.scrollWidth > (el.clientWidth + 5);
 		}).length;
     if (overflowingElements > 0) {
-		__responsiveIssues.push("Has horizontally overflowing elements");
+		__responsiveIssues.push("Has " + overflowingElements + " horizontally overflowing elements");
 		score -= Math.min(15, overflowingElements * 2);
 	}
 
@@ -201,7 +201,7 @@ const responsiveScript = `((importantOnly = false) => {
 			);
 		}).length;
 	if (crowdedTapTargets > 0) {
-		__responsiveIssues.push("Has crowded tap targets");
+		__responsiveIssues.push("Has " + crowdedTapTargets + " crowded tap targets");
 		score -= Math.min(6, crowdedTapTargets * 0.6);
 	}
 
@@ -215,7 +215,7 @@ const responsiveScript = `((importantOnly = false) => {
 				style.maxWidth === 'none' && !style.width.includes('%');
 		}).length;
 	if (inflexibleImages > 0) {
-		__responsiveIssues.push("Has non flexible images");
+		__responsiveIssues.push("Has " + inflexibleImages + " non flexible images");
 		score -= Math.min(9, inflexibleImages * 1.8);
 	}
 
@@ -229,7 +229,7 @@ const responsiveScript = `((importantOnly = false) => {
             return fontSize < 12;
 		}).length;
 	if (smallText > 0) {
-		__responsiveIssues.push("Has small text");
+		__responsiveIssues.push("Has " + smallText + " small text elements");
 		score -= Math.min(9, smallText * 1.2);
 	}
 
