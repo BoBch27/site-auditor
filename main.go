@@ -30,13 +30,13 @@ func main() {
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(context.Background(), config.urls, config.checks, config.important)
+	audits, err := auditWebsites(context.Background(), config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// write audit results
-	err = writeResultsToCSV(config.output, audits)
+	err = writeResultsToCSV(config, audits)
 	if err != nil {
 		log.Fatal(err)
 	}

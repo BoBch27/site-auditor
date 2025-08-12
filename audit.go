@@ -37,14 +37,9 @@ type auditCheck[T interface{}] struct {
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
-func auditWebsites(
-	ctx context.Context,
-	urls []string,
-	specifiedChecks string,
-	importantCheck bool,
-) ([]auditResult, error) {
+func auditWebsites(ctx context.Context, cfg config) ([]auditResult, error) {
 	// extract specified checks to run
-	checksToRun, err := extractChecksToRun(specifiedChecks)
+	checksToRun, err := extractChecksToRun(cfg.checks)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +82,13 @@ func auditWebsites(
 		return nil, err
 	}
 
-	urlsNo := len(urls)
+	urlsNo := len(cfg.urls)
 	results := make([]auditResult, urlsNo)
 
-	for i, url := range urls {
+	for i, url := range cfg.urls {
 		// audit each website
 		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		results[i] = auditWebsite(browserCtx, url, checksToRun, importantCheck)
+		results[i] = auditWebsite(browserCtx, url, checksToRun, cfg.important)
 	}
 
 	return results, nil
