@@ -81,8 +81,8 @@ func readURLsFromCSV(filename string) ([]string, error) {
 }
 
 // writeResultsToCSV writes the results to the output CSV
-func writeResultsToCSV(cfg config, results []auditResult) error {
-	outFile, err := os.Create(cfg.output)
+func writeResultsToCSV(filepath string, results []auditResult) error {
+	outFile, err := os.Create(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

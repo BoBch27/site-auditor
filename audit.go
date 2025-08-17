@@ -87,7 +87,7 @@ func validateAndExtractChecks(checksStr string) (auditChecks, error) {
 
 // auditWebsites opens all URLs in a headless browser and executes various checks
 // before returning a set of audit results
-func auditWebsites(ctx context.Context, cfg config, checks auditChecks) ([]auditResult, error) {
+func auditWebsites(ctx context.Context, urls []string, checks auditChecks, important bool) ([]auditResult, error) {
 	// setup browser options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
@@ -126,13 +126,13 @@ func auditWebsites(ctx context.Context, cfg config, checks auditChecks) ([]audit
 		return nil, err
 	}
 
-	urlsNo := len(cfg.urls)
+	urlsNo := len(urls)
 	results := make([]auditResult, urlsNo)
 
-	for i, url := range cfg.urls {
+	for i, url := range urls {
 		// audit each website
 		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		results[i] = auditWebsite(browserCtx, url, checks, cfg.important)
+		results[i] = auditWebsite(browserCtx, url, checks, important)
 	}
 
 	return results, nil
