@@ -24,6 +24,29 @@ func validateInputFile(filename string) error {
 	return nil
 }
 
+// validateOutputFile ensures the output directory exists and is writable
+func validateOutputFile(filepath string) error {
+	if filepath == "" {
+		return fmt.Errorf("output path cannot be empty")
+	}
+
+	// check if we can create the output file by attempting to create it
+	// this validates both directory existence and write permissions
+	file, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("cannot create output file %s: %w", filepath, err)
+	}
+	file.Close()
+
+	// remove the test file
+	err = os.Remove(filepath)
+	if err != nil {
+		return fmt.Errorf("cannot remove output test file %s: %w", filepath, err)
+	}
+
+	return nil
+}
+
 // readURLsFromCSV reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
 func readURLsFromCSV(filename string) ([]string, error) {

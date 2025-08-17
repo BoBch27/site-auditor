@@ -68,6 +68,11 @@ func (c *config) validate() error {
 		return err
 	}
 
+	err = validateOutputFile(c.output)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
