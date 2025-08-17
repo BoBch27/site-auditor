@@ -18,6 +18,7 @@ type config struct {
 }
 
 func main() {
+	ctx := context.Background()
 	config := parseFlags()
 
 	checksToRun, err := config.validateAndExtract()
@@ -25,13 +26,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = config.extractURLs()
+	err = config.extractURLs(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(context.Background(), config.urls, checksToRun, config.important)
+	audits, err := auditWebsites(ctx, config.urls, checksToRun, config.important)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,8 +86,18 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 }
 
 // extractURLs populates the URLs field based on input method
-func (c *config) extractURLs() error {
-	// scrape URLs from Google search
+func (c *config) extractURLs(ctx context.Context) error {
+	// search for URLs from Google Places
+	if c.search != "" {
+		placesURLs, err := searchURLsFromGooglePlaces(ctx, c.search)
+		if err != nil {
+			return err
+		}
+
+		c.urls = append(c.urls, placesURLs...)
+	}
+
+	// scrape URLs from Google Search
 	if c.scrape != "" {
 		scrapedURLs, err := scrapeURLsFromGoogleSearch(c.scrape)
 		if err != nil {

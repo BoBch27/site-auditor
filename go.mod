@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/chromedp/cdproto v0.0.0-20250403032234-65de8f5d025b
 	github.com/chromedp/chromedp v0.13.6
+	googlemaps.github.io/maps v1.7.0
 )
 
 require (
@@ -20,5 +21,4 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	googlemaps.github.io/maps v1.7.0 // indirect
 )
