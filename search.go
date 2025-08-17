@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"googlemaps.github.io/maps"
 )
@@ -17,18 +18,31 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 		return nil, fmt.Errorf("failed to create maps client: %w", err)
 	}
 
+	allPlaces := []maps.PlacesSearchResult{}
+
 	// make a text query
-	res, err := client.TextSearch(ctx, &maps.TextSearchRequest{
-		Query: searchPrompt,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed text search for %s: %w", searchPrompt, err)
+	textReq := &maps.TextSearchRequest{Query: searchPrompt}
+	for {
+		res, err := client.TextSearch(ctx, textReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed text search for %s: %w", searchPrompt, err)
+		}
+
+		allPlaces = append(allPlaces, res.Results...)
+
+		if res.NextPageToken == "" {
+			break
+		}
+
+		textReq.PageToken = res.NextPageToken
+
+		time.Sleep(2 * time.Second) // required delay before next page
 	}
 
 	checkedDomains := map[string]bool{}
 	urls := []string{}
 
-	for _, p := range res.Results {
+	for _, p := range allPlaces {
 		// get place details (needed for website data)
 		details, err := client.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
 			PlaceID: p.PlaceID,
