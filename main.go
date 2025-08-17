@@ -63,6 +63,11 @@ func (c *config) validate() error {
 		return fmt.Errorf("neither input file nor scrape prompt are specified")
 	}
 
+	err := validateInputFile(c.input)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

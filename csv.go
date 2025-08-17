@@ -8,6 +8,22 @@ import (
 	"strings"
 )
 
+// validateInputFile checks if the input CSV file exists and is readable
+func validateInputFile(filename string) error {
+	if filename == "" {
+		return nil // not using input file
+	}
+
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("input file does not exist: %s", filename)
+	} else if err != nil {
+		return fmt.Errorf("cannot access input file: %w", err)
+	}
+
+	return nil
+}
+
 // readURLsFromCSV reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
 func readURLsFromCSV(filename string) ([]string, error) {
