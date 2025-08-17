@@ -8,7 +8,10 @@ import (
 	"googlemaps.github.io/maps"
 )
 
-const apiKey = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
+const (
+	apiKey         = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
+	placeDetailQPS = 5 // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
+)
 
 // searchURLsFromGooglePlaces queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
@@ -41,9 +44,21 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 
 	checkedDomains := map[string]bool{}
 	urls := []string{}
+	results := map[string]string{} // PlaceID -> Website
 
+	ticker := time.NewTicker(time.Second / placeDetailQPS)
+	defer ticker.Stop()
+
+	// get place details (needed for website data)
 	for _, p := range allPlaces {
-		// get place details (needed for website data)
+		// avoid duplicate PlaceDetails calls
+		if _, exists := results[p.PlaceID]; exists {
+			continue
+		}
+
+		<-ticker.C // throttle PlaceDetails
+
+		// make a place details query
 		details, err := client.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
 			PlaceID: p.PlaceID,
 		})
@@ -68,6 +83,7 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 
 		urls = append(urls, scheme+"://"+domain+"/")
 		checkedDomains[domain] = true
+		results[p.PlaceID] = details.Website
 	}
 
 	return urls, nil
