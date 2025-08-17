@@ -19,7 +19,7 @@ type config struct {
 func main() {
 	config := parseFlags()
 
-	err := config.validate()
+	checksToRun, err := config.validateAndExtract()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(context.Background(), config)
+	audits, err := auditWebsites(context.Background(), config, checksToRun)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,23 +57,29 @@ func parseFlags() config {
 	return config
 }
 
-// validate ensures the configuration is valid
-func (c *config) validate() error {
+// validateAndExtract ensures the configuration is valid and
+// extracts specified audit checks to perform
+func (c *config) validateAndExtract() (auditChecks, error) {
 	if c.input == "" && c.scrape == "" {
-		return fmt.Errorf("neither input file nor scrape prompt are specified")
+		return auditChecks{}, fmt.Errorf("neither input file nor scrape prompt are specified")
 	}
 
 	err := validateInputFile(c.input)
 	if err != nil {
-		return err
+		return auditChecks{}, err
 	}
 
 	err = validateOutputFile(c.output)
 	if err != nil {
-		return err
+		return auditChecks{}, err
 	}
 
-	return nil
+	checksToRun, err := validateAndExtractChecks(c.checks)
+	if err != nil {
+		return auditChecks{}, err
+	}
+
+	return checksToRun, nil
 }
 
 // extractURLs populates the URLs field based on input method

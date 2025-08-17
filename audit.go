@@ -35,68 +35,9 @@ type auditCheck[T interface{}] struct {
 	result  T
 }
 
-// auditWebsites opens all URLs in a headless browser and executes various checks
-// before returning a set of audit results
-func auditWebsites(ctx context.Context, cfg config) ([]auditResult, error) {
-	// extract specified checks to run
-	checksToRun, err := extractChecksToRun(cfg.checks)
-	if err != nil {
-		return nil, err
-	}
-
-	// setup browser options
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("disable-cache", true),
-		chromedp.Flag("disable-background-networking", true),
-		chromedp.Flag("metrics-recording-only", true),
-		chromedp.Flag("disable-features", "PreloadMediaEngagementData,PreloadMediaEngagementData2,SpeculativePreconnect,NoStatePrefetch"),
-	)
-
-	// create context with ExecAllocator
-	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, opts...)
-	defer cancelAlloc()
-
-	// create browser context
-	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
-	defer cancelBrowser()
-
-	// open browser with a blank page and wait to initialise,
-	// done so performance metrics aren’t skewed by cold start overhead
-	err = chromedp.Run(browserCtx, chromedp.ActionFunc(func(ctx context.Context) error {
-		err := chromedp.Navigate("about:blank").Do(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to initialise browser: %w", err)
-		}
-
-		err = chromedp.Sleep(1 * time.Second).Do(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to wait for browser initialisation: %w", err)
-		}
-
-		return nil
-	}))
-	if err != nil {
-		return nil, err
-	}
-
-	urlsNo := len(cfg.urls)
-	results := make([]auditResult, urlsNo)
-
-	for i, url := range cfg.urls {
-		// audit each website
-		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		results[i] = auditWebsite(browserCtx, url, checksToRun, cfg.important)
-	}
-
-	return results, nil
-}
-
-// extractChecksToRun takes in a comma-separated string and specifies
+// validateAndExtractChecks takes in a comma-separated string and specifies
 // which audit checks to run
-func extractChecksToRun(checksStr string) (auditChecks, error) {
+func validateAndExtractChecks(checksStr string) (auditChecks, error) {
 	// if no checks specified, return all enabled
 	if checksStr == "" {
 		return auditChecks{
@@ -142,6 +83,59 @@ func extractChecksToRun(checksStr string) (auditChecks, error) {
 	}
 
 	return checks, nil
+}
+
+// auditWebsites opens all URLs in a headless browser and executes various checks
+// before returning a set of audit results
+func auditWebsites(ctx context.Context, cfg config, checks auditChecks) ([]auditResult, error) {
+	// setup browser options
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-cache", true),
+		chromedp.Flag("disable-background-networking", true),
+		chromedp.Flag("metrics-recording-only", true),
+		chromedp.Flag("disable-features", "PreloadMediaEngagementData,PreloadMediaEngagementData2,SpeculativePreconnect,NoStatePrefetch"),
+	)
+
+	// create context with ExecAllocator
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancelAlloc()
+
+	// create browser context
+	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
+	defer cancelBrowser()
+
+	// open browser with a blank page and wait to initialise,
+	// done so performance metrics aren’t skewed by cold start overhead
+	err := chromedp.Run(browserCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+		err := chromedp.Navigate("about:blank").Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to initialise browser: %w", err)
+		}
+
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to wait for browser initialisation: %w", err)
+		}
+
+		return nil
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	urlsNo := len(cfg.urls)
+	results := make([]auditResult, urlsNo)
+
+	for i, url := range cfg.urls {
+		// audit each website
+		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
+		results[i] = auditWebsite(browserCtx, url, checks, cfg.important)
+	}
+
+	return results, nil
 }
 
 // auditWebsite opens the URL in a headless browser and executes various checks
