@@ -86,7 +86,7 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 func (c *config) extractURLs() error {
 	// scrape URLs from Google search
 	if c.scrape != "" {
-		scrapedURLs, err := scrapeURLs(c.scrape)
+		scrapedURLs, err := scrapeURLsFromGoogleSearch(c.scrape)
 		if err != nil {
 			return err
 		}

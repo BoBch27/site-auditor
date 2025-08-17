@@ -12,9 +12,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// scrapeURLs queries Google with the specified search prompt in a
+// scrapeURLsFromGoogleSearch queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
-func scrapeURLs(searchPrompt string) ([]string, error) {
+func scrapeURLsFromGoogleSearch(searchPrompt string) ([]string, error) {
 	checkedDomains := map[string]bool{}
 	urls := []string{}
 	searchQuery := url.QueryEscape(searchPrompt)
