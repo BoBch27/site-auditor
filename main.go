@@ -63,24 +63,30 @@ func (c *config) validate() error {
 		return fmt.Errorf("neither input file nor search prompt are specified")
 	}
 
-	if c.input != "" && c.search != "" {
-		return fmt.Errorf("only one of input file or search prompt can be specified")
-	}
-
 	return nil
 }
 
 // extractURLs populates the URLs field based on input method
 func (c *config) extractURLs() error {
-	var err error
-
+	// scrape URLs from Google search
 	if c.search != "" {
-		// scrape URLs from Google search
-		c.urls, err = scrapeURLs(c.search)
-	} else {
-		// extract URLs from CSV
-		c.urls, err = readURLsFromCSV(c.input)
+		scrapedURLs, err := scrapeURLs(c.search)
+		if err != nil {
+			return err
+		}
+
+		c.urls = append(c.urls, scrapedURLs...)
 	}
 
-	return err
+	// extract URLs from CSV
+	if c.input != "" {
+		readURLs, err := readURLsFromCSV(c.input)
+		if err != nil {
+			return err
+		}
+
+		c.urls = append(c.urls, readURLs...)
+	}
+
+	return nil
 }
