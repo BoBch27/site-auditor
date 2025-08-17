@@ -8,7 +8,7 @@ import (
 )
 
 type config struct {
-	search    string
+	scrape    string
 	input     string
 	output    string
 	checks    string
@@ -47,7 +47,7 @@ func parseFlags() config {
 	var config config
 
 	// define flags
-	flag.StringVar(&config.search, "search", "", "Search prompt to scrape URLs for")
+	flag.StringVar(&config.scrape, "scrape", "", "Google input prompt to scrape URLs for")
 	flag.StringVar(&config.input, "input", "", "Path to input CSV file with URLs")
 	flag.StringVar(&config.output, "output", "report.csv", "Path to output CSV report")
 	flag.StringVar(&config.checks, "checks", "", "Comma-separated checks to run (security,lcp,console,request,headers,mobile,form,tech,screenshot). Empty = all checks")
@@ -59,8 +59,8 @@ func parseFlags() config {
 
 // validate ensures the configuration is valid
 func (c *config) validate() error {
-	if c.input == "" && c.search == "" {
-		return fmt.Errorf("neither input file nor search prompt are specified")
+	if c.input == "" && c.scrape == "" {
+		return fmt.Errorf("neither input file nor scrape prompt are specified")
 	}
 
 	return nil
@@ -69,8 +69,8 @@ func (c *config) validate() error {
 // extractURLs populates the URLs field based on input method
 func (c *config) extractURLs() error {
 	// scrape URLs from Google search
-	if c.search != "" {
-		scrapedURLs, err := scrapeURLs(c.search)
+	if c.scrape != "" {
+		scrapedURLs, err := scrapeURLs(c.scrape)
 		if err != nil {
 			return err
 		}
