@@ -8,6 +8,7 @@ import (
 )
 
 type config struct {
+	search    string
 	scrape    string
 	input     string
 	output    string
@@ -47,6 +48,7 @@ func parseFlags() config {
 	var config config
 
 	// define flags
+	flag.StringVar(&config.search, "search", "", "Search prompt for which to find URLs from Google Places")
 	flag.StringVar(&config.scrape, "scrape", "", "Google input prompt to scrape URLs for")
 	flag.StringVar(&config.input, "input", "", "Path to input CSV file with URLs")
 	flag.StringVar(&config.output, "output", "report.csv", "Path to output CSV report")
@@ -60,8 +62,8 @@ func parseFlags() config {
 // validateAndExtract ensures the configuration is valid and
 // extracts specified audit checks to perform
 func (c *config) validateAndExtract() (auditChecks, error) {
-	if c.input == "" && c.scrape == "" {
-		return auditChecks{}, fmt.Errorf("neither input file nor scrape prompt are specified")
+	if c.search == "" && c.scrape == "" && c.input == "" {
+		return auditChecks{}, fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
 	}
 
 	err := validateInputFile(c.input)
