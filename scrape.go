@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -15,7 +14,6 @@ import (
 // scrapeURLsFromGoogleSearch queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
 func scrapeURLsFromGoogleSearch(searchPrompt string) ([]string, error) {
-	checkedDomains := map[string]bool{}
 	urls := []string{}
 	searchQuery := url.QueryEscape(searchPrompt)
 
@@ -36,17 +34,7 @@ func scrapeURLsFromGoogleSearch(searchPrompt string) ([]string, error) {
 				return
 			}
 
-			scheme, domain, err := extractUrlParts(href)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if checkedDomains[domain] {
-				return
-			}
-
-			urls = append(urls, scheme+"://"+domain+"/")
-			checkedDomains[domain] = true
+			urls = append(urls, href)
 		})
 
 		// random 30-60 second wait to simulate human behaviour

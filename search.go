@@ -58,7 +58,6 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 	// generate tile centres
 	tileCentres := generateTiles(expandedBounds, tileSizeMetres)
 
-	checkedDomains := map[string]bool{}
 	urls := []string{}
 	results := map[string]string{} // PlaceID -> Website
 
@@ -94,19 +93,8 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 				continue
 			}
 
-			scheme, domain, err := extractUrlParts(details.Website)
-			if err != nil {
-				fmt.Printf("failed URL parsing for %s (ID: %s): %v", p.Name, p.PlaceID, err)
-				continue
-			}
-
-			if checkedDomains[domain] {
-				continue
-			}
-
-			urls = append(urls, scheme+"://"+domain+"/")
-			checkedDomains[domain] = true
 			results[p.PlaceID] = details.Website
+			urls = append(urls, details.Website)
 		}
 	}
 

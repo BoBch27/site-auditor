@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 )
 
 type config struct {
@@ -123,5 +124,58 @@ func (c *config) extractURLs(ctx context.Context) ([]string, error) {
 		urls = append(urls, readURLs...)
 	}
 
-	return urls, nil
+	return c.extractCleanURLs(urls), nil
+}
+
+// extractCleanURLs filters and cleans URLs
+func (c *config) extractCleanURLs(rawURLs []string) []string {
+	urls := []string{}
+	seen := map[string]bool{}
+
+	for _, url := range rawURLs {
+		if url == "" {
+			continue
+		}
+
+		scheme, domain, err := extractUrlParts(url)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		// avoid duplicates
+		if seen[domain] {
+			continue
+		}
+
+		// avoid domains which contain ignored words
+		if c.isIgnoredDomain(domain) {
+			continue
+		}
+
+		seen[domain] = true
+		urls = append(urls, scheme+"://"+domain+"/")
+	}
+
+	return urls
+}
+
+// domains to ignore when filtering business websites
+var ignoredBusinessDomains = []string{
+	"facebook.com", "instagram.com", "twitter.com", "linkedin.com",
+	"booksy.com", "treatwell.co.uk", "fresha.com",
+	"yelp.com", "yelp.co.uk", "yell.com", "tripadvisor.com",
+	"boots.com", "superdrug.com", "directory",
+	"google.com", "maps.google.com", "bizmapgo",
+}
+
+// isIgnoredDomain checks if a domain should be filtered out
+func (c *config) isIgnoredDomain(domain string) bool {
+	for _, ignored := range ignoredBusinessDomains {
+		if strings.Contains(domain, ignored) {
+			return true
+		}
+	}
+
+	return false
 }
