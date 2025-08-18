@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	apiKey         = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
-	placeDetailQPS = 5   // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
-	tileSizeMetres = 500 // search radius per tile
+	apiKey              = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
+	placeDetailQPS      = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
+	tileSizeMetres      = 500  // search radius per tile
+	boundsBufferPercent = 0.15 // bounds expansion percentage
 )
 
 // searchURLsFromGooglePlaces queries Google Places for businesses matching
@@ -35,8 +36,11 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 		return nil, err
 	}
 
+	// expand bounds to include outskirts
+	expandedBounds := expandBounds(bounds, boundsBufferPercent)
+
 	// generate tile centres
-	tileCentres := generateTiles(bounds, tileSizeMetres)
+	tileCentres := generateTiles(expandedBounds, tileSizeMetres)
 
 	checkedDomains := map[string]bool{}
 	urls := []string{}
@@ -105,6 +109,26 @@ func geocodeBounds(ctx context.Context, client *maps.Client, location string) (m
 	}
 
 	return res[0].Geometry.Bounds, nil
+}
+
+// expandBounds adds a buffer around the original bounds
+func expandBounds(bounds maps.LatLngBounds, bufferPercent float64) maps.LatLngBounds {
+	latRange := bounds.NorthEast.Lat - bounds.SouthWest.Lat
+	lngRange := bounds.NorthEast.Lng - bounds.SouthWest.Lng
+
+	latBuffer := latRange * bufferPercent
+	lngBuffer := lngRange * bufferPercent
+
+	return maps.LatLngBounds{
+		NorthEast: maps.LatLng{
+			Lat: bounds.NorthEast.Lat + latBuffer,
+			Lng: bounds.NorthEast.Lng + lngBuffer,
+		},
+		SouthWest: maps.LatLng{
+			Lat: bounds.SouthWest.Lat - latBuffer,
+			Lng: bounds.SouthWest.Lng - lngBuffer,
+		},
+	}
 }
 
 // generateTiles splits bounds into tile centres for searches
