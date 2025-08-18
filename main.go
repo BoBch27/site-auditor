@@ -14,7 +14,6 @@ type config struct {
 	output    string
 	checks    string
 	important bool
-	urls      []string
 }
 
 func main() {
@@ -26,13 +25,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = config.extractURLs(ctx)
+	urls, err := config.extractURLs(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(ctx, config.urls, checksToRun, config.important)
+	audits, err := auditWebsites(ctx, urls, checksToRun, config.important)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,37 +89,39 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 	return checksToRun, nil
 }
 
-// extractURLs populates the URLs field based on input method
-func (c *config) extractURLs(ctx context.Context) error {
+// extractURLs collects URLs based on input method
+func (c *config) extractURLs(ctx context.Context) ([]string, error) {
+	var urls []string
+
 	// search for URLs from Google Places
 	if c.search != "" {
 		placesURLs, err := searchURLsFromGooglePlaces(ctx, c.search)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		c.urls = append(c.urls, placesURLs...)
+		urls = append(urls, placesURLs...)
 	}
 
 	// scrape URLs from Google Search
 	if c.scrape != "" {
 		scrapedURLs, err := scrapeURLsFromGoogleSearch(c.scrape)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		c.urls = append(c.urls, scrapedURLs...)
+		urls = append(urls, scrapedURLs...)
 	}
 
 	// extract URLs from CSV
 	if c.input != "" {
 		readURLs, err := readURLsFromCSV(c.input)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		c.urls = append(c.urls, readURLs...)
+		urls = append(urls, readURLs...)
 	}
 
-	return nil
+	return urls, nil
 }
