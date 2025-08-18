@@ -375,7 +375,7 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 		chromedp.ListenTarget(ctx, func(ev interface{}) {
 			switch ev := ev.(type) {
 			case *network.EventRequestWillBeSent:
-				if !isIgnoredURL(ev.Request.URL) {
+				if !isIgnoredUrlForIdle(ev.Request.URL) {
 					staticSiteTimer.Stop() // we have requests - not a static site
 					activeRequests[ev.RequestID] = ev.Request.URL
 					idleTimer.Stop()
@@ -416,8 +416,8 @@ func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 	})
 }
 
-// domains to ignore (analytics, tracking, chats, favicons)
-var ignoredDomains = []string{
+// domains to ignore during idle check (analytics, tracking, chats, favicons)
+var ignoredDomainsForIdle = []string{
 	"google-analytics.com", "googletagmanager.com", "doubleclick.net",
 	"facebook.net", "hotjar.com", "favicon.ico", "google.com/gen_204",
 	"amazon-adsystem.com", "googlesyndication.com", "adsystem.amazon",
@@ -431,10 +431,10 @@ var ignoredDomains = []string{
 	"analytics", "telemetry",
 }
 
-// isIgnoredURL checks if the given URL contains one of the above domains
+// isIgnoredUrlForIdle checks if the given URL contains one of the above domains
 // and patterns to helps avoid waiting on analytics, tracking, and
 // non-critical resources
-func isIgnoredURL(url string) bool {
+func isIgnoredUrlForIdle(url string) bool {
 	urlLower := strings.ToLower(url)
 
 	// (web workers, service workers, generated content, etc.)
@@ -447,7 +447,7 @@ func isIgnoredURL(url string) bool {
 		return true
 	}
 
-	for _, domain := range ignoredDomains {
+	for _, domain := range ignoredDomainsForIdle {
 		if strings.Contains(urlLower, domain) {
 			return true
 		}
