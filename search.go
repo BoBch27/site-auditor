@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 )
 
 const (
-	apiKey           = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
-	placeDetailQPS   = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
-	radiusSizeMetres = 5000 // search radius in metres
+	apiKey         = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
+	placeDetailQPS = 5   // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
+	tileSizeMetres = 500 // search radius per tile
 )
 
 // searchURLsFromGooglePlaces queries Google Places for businesses matching
@@ -34,17 +35,8 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 		return nil, err
 	}
 
-	// use the midpoint of the bounds as the search centre
-	centre := maps.LatLng{
-		Lat: (bounds.NorthEast.Lat + bounds.SouthWest.Lat) / 2,
-		Lng: (bounds.NorthEast.Lng + bounds.SouthWest.Lng) / 2,
-	}
-
-	// get nearby places
-	nearbyPlaces, err := searchNearbyPlaces(ctx, client, keyword, centre.Lat, centre.Lng, radiusSizeMetres)
-	if err != nil {
-		return nil, err
-	}
+	// generate tile centres
+	tileCentres := generateTiles(bounds, tileSizeMetres)
 
 	checkedDomains := map[string]bool{}
 	urls := []string{}
@@ -53,41 +45,49 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 	ticker := time.NewTicker(time.Second / placeDetailQPS)
 	defer ticker.Stop()
 
-	// get place details (needed for website data)
-	for _, p := range nearbyPlaces {
-		// avoid duplicate PlaceDetails calls
-		if _, exists := results[p.PlaceID]; exists {
-			continue
-		}
-
-		<-ticker.C // throttle PlaceDetails
-
-		// make a place details query
-		details, err := client.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
-			PlaceID: p.PlaceID,
-		})
+	for _, centre := range tileCentres {
+		// get nearby places
+		places, err := searchNearbyPlaces(ctx, client, keyword, centre.Lat, centre.Lng, tileSizeMetres)
 		if err != nil {
-			fmt.Printf("failed place details for %s (ID: %s): %v", p.Name, p.PlaceID, err)
-			continue
+			return nil, err
 		}
 
-		if details.Website == "" {
-			continue
-		}
+		// get place details (needed for website data)
+		for _, p := range places {
+			// avoid duplicate PlaceDetails calls
+			if _, exists := results[p.PlaceID]; exists {
+				continue
+			}
 
-		scheme, domain, err := extractUrlParts(details.Website)
-		if err != nil {
-			fmt.Printf("failed URL parsing for %s (ID: %s): %v", p.Name, p.PlaceID, err)
-			continue
-		}
+			<-ticker.C // throttle PlaceDetails
 
-		if checkedDomains[domain] {
-			continue
-		}
+			// make a place details query
+			details, err := client.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
+				PlaceID: p.PlaceID,
+			})
+			if err != nil {
+				fmt.Printf("failed place details for %s (ID: %s): %v", p.Name, p.PlaceID, err)
+				continue
+			}
 
-		urls = append(urls, scheme+"://"+domain+"/")
-		checkedDomains[domain] = true
-		results[p.PlaceID] = details.Website
+			if details.Website == "" {
+				continue
+			}
+
+			scheme, domain, err := extractUrlParts(details.Website)
+			if err != nil {
+				fmt.Printf("failed URL parsing for %s (ID: %s): %v", p.Name, p.PlaceID, err)
+				continue
+			}
+
+			if checkedDomains[domain] {
+				continue
+			}
+
+			urls = append(urls, scheme+"://"+domain+"/")
+			checkedDomains[domain] = true
+			results[p.PlaceID] = details.Website
+		}
 	}
 
 	return urls, nil
@@ -105,6 +105,31 @@ func geocodeBounds(ctx context.Context, client *maps.Client, location string) (m
 	}
 
 	return res[0].Geometry.Bounds, nil
+}
+
+// generateTiles splits bounds into tile centres for searches
+func generateTiles(bounds maps.LatLngBounds, tileSize float64) []maps.LatLng {
+	latStep := metresToLat(tileSize)
+	lngStep := metresToLng(tileSize, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
+
+	var tiles []maps.LatLng
+	for lat := bounds.SouthWest.Lat; lat <= bounds.NorthEast.Lat; lat += latStep {
+		for lng := bounds.SouthWest.Lng; lng <= bounds.NorthEast.Lng; lng += lngStep {
+			tiles = append(tiles, maps.LatLng{Lat: lat, Lng: lng})
+		}
+	}
+
+	return tiles
+}
+
+// metresToLat converts metres to latitude degrees
+func metresToLat(m float64) float64 {
+	return m / 111320.0
+}
+
+// metresToLng converts metres to longitude degrees at a given latitude
+func metresToLng(m, lat float64) float64 {
+	return m / (111320.0 * math.Cos(lat*math.Pi/180))
 }
 
 // searchNearbyPlaces fetches up to 60 results for a given lat/lng,
