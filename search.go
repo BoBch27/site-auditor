@@ -17,13 +17,28 @@ const (
 	boundsBufferPercent = 0.15 // bounds expansion percentage
 )
 
+// validatePlacesSearchPrompt validates the search prompt format
+func validatePlacesSearchPrompt(searchPrompt string) error {
+	if searchPrompt == "" {
+		return nil // not using search
+	}
+
+	if !strings.Contains(searchPrompt, " in ") {
+		return fmt.Errorf("search prompt must be in format: \"[Business Type] in [Location]\"")
+	}
+
+	parts := strings.Split(searchPrompt, " in ")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+		return fmt.Errorf("search prompt must contain both business type and location")
+	}
+
+	return nil
+}
+
 // searchURLsFromGooglePlaces queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
 func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]string, error) {
-	keyword, location, split := strings.Cut(searchPrompt, " in ")
-	if !split {
-		return nil, fmt.Errorf("search prompt must be in the following format: \"[Business Type] in [Location]\"")
-	}
+	keyword, location, _ := strings.Cut(searchPrompt, " in ")
 
 	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
 	if err != nil {

@@ -82,6 +82,11 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 		return auditChecks{}, err
 	}
 
+	err = validatePlacesSearchPrompt(c.search)
+	if err != nil {
+		return auditChecks{}, err
+	}
+
 	return checksToRun, nil
 }
 
