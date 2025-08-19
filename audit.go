@@ -431,19 +431,19 @@ var ignoredIdlePatterns = []string{
 	"analytics", "telemetry",
 }
 
-// important security headers to check
-var securityHeaders = []string{
-	"Content-Security-Policy",
-	"Strict-Transport-Security",
-	"X-Content-Type-Options",
-	"X-Frame-Options",
-	"Permissions-Policy",
-	"Referrer-Policy",
-}
-
 // checkSecurityHeaders looks for missing security headers from
 // the page's main document request
 func checkSecurityHeaders(resHeaders network.Headers) []string {
+	// important security headers to check
+	securityHeaders := []string{
+		"Content-Security-Policy",
+		"Strict-Transport-Security",
+		"X-Content-Type-Options",
+		"X-Frame-Options",
+		"Permissions-Policy",
+		"Referrer-Policy",
+	}
+
 	missingHeaders := []string{}
 
 	for _, header := range securityHeaders {
