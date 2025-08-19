@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strings"
 )
 
 type config struct {
@@ -149,7 +148,7 @@ func (c *config) extractCleanURLs(rawURLs []string) []string {
 		}
 
 		// avoid domains which contain ignored words
-		if c.isIgnoredDomain(domain) {
+		if isIgnoredResource(domain, ignoredBusinessPatterns) {
 			continue
 		}
 
@@ -160,22 +159,11 @@ func (c *config) extractCleanURLs(rawURLs []string) []string {
 	return urls
 }
 
-// domains to ignore when filtering business websites
-var ignoredBusinessDomains = []string{
+// patterns to ignore when filtering business websites
+var ignoredBusinessPatterns = []string{
 	"facebook.com", "instagram.com", "twitter.com", "linkedin.com",
 	"booksy.com", "treatwell.co.uk", "fresha.com",
 	"yelp.com", "yelp.co.uk", "yell.com", "tripadvisor.com",
 	"boots.com", "superdrug.com", "directory",
 	"google.com", "maps.google.com", "bizmapgo",
-}
-
-// isIgnoredDomain checks if a domain should be filtered out
-func (c *config) isIgnoredDomain(domain string) bool {
-	for _, ignored := range ignoredBusinessDomains {
-		if strings.Contains(domain, ignored) {
-			return true
-		}
-	}
-
-	return false
 }
