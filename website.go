@@ -30,3 +30,9 @@ func newWebsite(rawURL string) (*website, error) {
 		originalURL: rawURL,
 	}, nil
 }
+
+// isIgnored reports whether the given website domain
+// matches any of the ignored patterns to help avoid duplicates
+func (w *website) isIgnored(ignoredPatterns []string) bool {
+	return isIgnoredResource(w.domain, ignoredPatterns)
+}

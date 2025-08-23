@@ -148,7 +148,7 @@ func (c *config) cleanWebsites(rawURLs []string) []*website {
 		}
 
 		// avoid domains which contain ignored words
-		if isIgnoredResource(website.domain, ignoredBusinessPatterns) {
+		if website.isIgnored(ignoredBusinessPatterns) {
 			continue
 		}
 
