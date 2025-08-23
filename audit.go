@@ -146,7 +146,7 @@ func auditWebsites(ctx context.Context, websites []*website, checks auditChecks,
 
 	for i, website := range websites {
 		// audit each website
-		fmt.Printf("auditing site %d/%d (%s)\n", i+1, sitesNo, website.domain)
+		fmt.Printf("\r - auditing site %d/%d (%s)\n", i+1, sitesNo, website.domain)
 		results[i] = auditWebsite(browserCtx, website, checks, important)
 	}
 
