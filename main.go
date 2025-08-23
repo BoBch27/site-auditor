@@ -18,35 +18,40 @@ type config struct {
 
 func main() {
 	ctx := context.Background()
+	spinner := newSpinner()
 	config := parseFlags()
 
 	// validate flags
-	fmt.Println("Validating input...")
+	spinner.start("Validating input...")
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
+	spinner.stop()
 
 	// collect websites based on specified input methods
-	fmt.Println("Extracting websites...")
+	spinner.start("Extracting websites...")
 	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
+	spinner.stop()
 
 	// perform audits in a headless browser
-	fmt.Println("Auditing websites...")
+	spinner.start("Auditing websites...")
 	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
+	spinner.stop()
 
 	// write audit results to csv
-	fmt.Println("Writing results...")
+	spinner.start("Writing results...")
 	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
+	spinner.stop()
 
 	fmt.Println("✅ Done")
 }
