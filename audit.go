@@ -237,9 +237,16 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		return result
 	}
 
+	// force site to load over http in order to check if it auto redirects
+	// (if security check is enabled)
+	websiteScheme := website.scheme
+	if checksToRun.secure.enabled {
+		websiteScheme = "http"
+	}
+
 	// navigate to site and wait to settle
 	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
-		err := chromedp.Navigate(website.scheme + "://" + website.domain + "/").Do(ctx)
+		err := chromedp.Navigate(websiteScheme + "://" + website.domain + "/").Do(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to navigate: %w", err)
 		}
