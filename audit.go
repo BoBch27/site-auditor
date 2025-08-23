@@ -15,7 +15,7 @@ import (
 )
 
 type auditResult struct {
-	url       string
+	website   string
 	checks    auditChecks
 	auditErrs []string
 }
@@ -85,9 +85,9 @@ func validateAndExtractChecks(checksStr string) (auditChecks, error) {
 	return checks, nil
 }
 
-// auditWebsites opens all URLs in a headless browser and executes various checks
+// auditWebsites opens all sites in a headless browser and executes various checks
 // before returning a set of audit results
-func auditWebsites(ctx context.Context, urls []string, checks auditChecks, important bool) ([]auditResult, error) {
+func auditWebsites(ctx context.Context, websites []*website, checks auditChecks, important bool) ([]auditResult, error) {
 	// setup browser options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
@@ -126,22 +126,22 @@ func auditWebsites(ctx context.Context, urls []string, checks auditChecks, impor
 		return nil, err
 	}
 
-	urlsNo := len(urls)
-	results := make([]auditResult, urlsNo)
+	sitesNo := len(websites)
+	results := make([]auditResult, sitesNo)
 
-	for i, url := range urls {
+	for i, website := range websites {
 		// audit each website
-		fmt.Printf("auditing site %d/%d (%s)\n", i+1, urlsNo, url)
-		results[i] = auditWebsite(browserCtx, url, checks, important)
+		fmt.Printf("auditing site %d/%d (%s)\n", i+1, sitesNo, website.domain)
+		results[i] = auditWebsite(browserCtx, website, checks, important)
 	}
 
 	return results, nil
 }
 
-// auditWebsite opens the URL in a headless browser and executes various checks
+// auditWebsite opens the site in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, url string, checksToRun auditChecks, importantChecks bool) auditResult {
-	result := auditResult{url: url, checks: checksToRun}
+func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks, importantChecks bool) auditResult {
+	result := auditResult{website: website.domain, checks: checksToRun}
 
 	// create new window context
 	windowCtx, cancelWindow := chromedp.NewContext(ctx)
@@ -237,9 +237,9 @@ func auditWebsite(ctx context.Context, url string, checksToRun auditChecks, impo
 		return result
 	}
 
-	// navigate to url and wait to settle
+	// navigate to site and wait to settle
 	nr, err := chromedp.RunResponse(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
-		err := chromedp.Navigate(url).Do(ctx)
+		err := chromedp.Navigate(website.scheme + "://" + website.domain + "/").Do(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to navigate: %w", err)
 		}
@@ -353,7 +353,7 @@ func auditWebsite(ctx context.Context, url string, checksToRun auditChecks, impo
 
 	// capture full page screenshot
 	if checksToRun.screenshot.enabled {
-		result.checks.screenshot.result, err = captureScreenshot(timeoutCtx, url)
+		result.checks.screenshot.result, err = captureScreenshot(timeoutCtx, website.domain)
 		if err != nil {
 			result.auditErrs = append(result.auditErrs, err.Error())
 			return result
@@ -466,17 +466,12 @@ func checkSecurityHeaders(resHeaders network.Headers) []string {
 
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
-func captureScreenshot(ctx context.Context, pageUrl string) (bool, error) {
+func captureScreenshot(ctx context.Context, domain string) (bool, error) {
 	var screenshot []byte
 
 	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
 	if err != nil {
 		return false, fmt.Errorf("failed to capture screenshot: %w", err)
-	}
-
-	_, domain, err := extractUrlParts(pageUrl)
-	if err != nil {
-		return false, err
 	}
 
 	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", domain)

@@ -91,7 +91,7 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 	writer := csv.NewWriter(outFile)
 	defer writer.Flush()
 
-	headers := []string{"URL"}
+	headers := []string{"Website"}
 	headers = append(headers, getEnabledHeaders(results[0].checks)...)
 	headers = append(headers, "Audit Errors")
 
@@ -101,7 +101,7 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 	}
 
 	for _, res := range results {
-		row := []string{res.url}
+		row := []string{res.website}
 		row = append(row, getEnabledValues(res.checks)...)
 		row = append(row, strings.Join(res.auditErrs, ";\n"))
 

@@ -25,13 +25,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	urls, err := config.extractURLs(ctx)
+	websites, err := config.extractWebsites(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// perform audits in a headless browser
-	audits, err := auditWebsites(ctx, urls, checksToRun, config.important)
+	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,8 +89,8 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 	return checksToRun, nil
 }
 
-// extractURLs collects URLs based on input method
-func (c *config) extractURLs(ctx context.Context) ([]string, error) {
+// extractWebsites collects websites based on input method
+func (c *config) extractWebsites(ctx context.Context) ([]*website, error) {
 	var urls []string
 
 	// search for URLs from Google Places
@@ -123,12 +123,12 @@ func (c *config) extractURLs(ctx context.Context) ([]string, error) {
 		urls = append(urls, readURLs...)
 	}
 
-	return c.extractCleanURLs(urls), nil
+	return c.cleanWebsites(urls), nil
 }
 
-// extractCleanURLs filters and cleans URLs
-func (c *config) extractCleanURLs(rawURLs []string) []string {
-	urls := []string{}
+// cleanWebsites filters and cleans passed in URLs
+func (c *config) cleanWebsites(rawURLs []string) []*website {
+	websites := []*website{}
 	seen := map[string]bool{}
 
 	for _, url := range rawURLs {
@@ -136,27 +136,27 @@ func (c *config) extractCleanURLs(rawURLs []string) []string {
 			continue
 		}
 
-		scheme, domain, err := extractUrlParts(url)
+		website, err := newWebsite(url)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
 		// avoid duplicates
-		if seen[domain] {
+		if seen[website.domain] {
 			continue
 		}
 
 		// avoid domains which contain ignored words
-		if isIgnoredResource(domain, ignoredBusinessPatterns) {
+		if isIgnoredResource(website.domain, ignoredBusinessPatterns) {
 			continue
 		}
 
-		seen[domain] = true
-		urls = append(urls, scheme+"://"+domain+"/")
+		seen[website.domain] = true
+		websites = append(websites, website)
 	}
 
-	return urls
+	return websites
 }
 
 // patterns to ignore when filtering business websites
