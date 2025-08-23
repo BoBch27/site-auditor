@@ -360,9 +360,15 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 
 		// capture common frontend technologies used
 		if checksToRun.techStack.enabled {
-			err = chromedp.Evaluate(techScript, &result.checks.techStack.result).Do(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to detect tech stack: %w", err)
+			// if important is enabled, only run check if important issues are found
+			hasImportantIssues := len(result.checks.responsiveIssues.result) > 0 ||
+				len(result.checks.formIssues.result) > 0
+
+			if !importantChecks || hasImportantIssues {
+				err = chromedp.Evaluate(techScript, &result.checks.techStack.result).Do(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to detect tech stack: %w", err)
+				}
 			}
 		}
 
