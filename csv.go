@@ -180,3 +180,13 @@ func getEnabledValues(checks auditChecks) []string {
 	}
 	return values
 }
+
+// boolToEmoji takes in a boolean and returns corresponding
+// emoji to visual inspection
+func boolToEmoji(ok bool) string {
+	if !ok {
+		return "❌"
+	}
+
+	return "✅"
+}
