@@ -136,21 +136,6 @@ const responsiveScript = `((importantOnly = false) => {
 		score -= 25;
 	}
 
-	// check for small tap targets (links, buttons, etc.)
-	const interactiveElements = Array.from(
-		document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
-	);
-	const smallTapTargets = interactiveElements
-		.filter(el => {
-			if (el.offsetParent === null) return false; // skip invisible elements
-			const rect = el.getBoundingClientRect();
-			return rect.width < 44 && rect.height < 44 && rect.width > 0 && rect.height > 0;
-		}).length;
-	if (smallTapTargets > 0) {
-		__responsiveIssues.push("Has " + smallTapTargets + " small tap targets");
-		score -= Math.min(12, smallTapTargets * 1.2);
-	}
-
 	// early return for important-only checks
 	if (importantOnly) {
 		return __responsiveIssues;
@@ -188,7 +173,20 @@ const responsiveScript = `((importantOnly = false) => {
 		score -= Math.min(15, overflowingElements * 2);
 	}
 
-	// check for crowded tap targets (links, buttons, etc.)
+	// check for small and crowded tap targets (links, buttons, etc.)
+	const interactiveElements = Array.from(
+		document.querySelectorAll('a, button, input, select, textarea, [onclick], [role="button"]')
+	);
+	const smallTapTargets = interactiveElements
+		.filter(el => {
+			if (el.offsetParent === null) return false; // skip invisible elements
+			const rect = el.getBoundingClientRect();
+			return rect.width < 44 && rect.height < 44 && rect.width > 0 && rect.height > 0;
+		}).length;
+	if (smallTapTargets > 0) {
+		__responsiveIssues.push("Has " + smallTapTargets + " small tap targets");
+		score -= Math.min(12, smallTapTargets * 1.2);
+	}
 	const crowdedTapTargets = interactiveElements
 		.filter(el => {
 			if (el.offsetParent === null) return false; // skip invisible elements
