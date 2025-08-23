@@ -43,6 +43,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
+
+	fmt.Println("✅ Done")
 }
 
 // parseFlags parses command line flags and returns a config
