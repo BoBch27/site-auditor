@@ -37,7 +37,22 @@ type auditCheck[T interface{}] struct {
 
 // validateAndExtractChecks takes in a comma-separated string and specifies
 // which audit checks to run
-func validateAndExtractChecks(checksStr string) (auditChecks, error) {
+func validateAndExtractChecks(checksStr string, important bool) (auditChecks, error) {
+	// can't enable both important and specified checks, since they're predefined
+	if important && checksStr != "" {
+		return auditChecks{}, fmt.Errorf("important checks are predefined")
+	}
+
+	// return predefined important checks
+	if important {
+		return auditChecks{
+			secure:           auditCheck[bool]{enabled: true},
+			responsiveIssues: auditCheck[[]string]{enabled: true},
+			formIssues:       auditCheck[[]string]{enabled: true},
+			techStack:        auditCheck[[]string]{enabled: true},
+		}, nil
+	}
+
 	// if no checks specified, return all enabled
 	if checksStr == "" {
 		return auditChecks{

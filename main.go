@@ -78,7 +78,7 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 		return auditChecks{}, err
 	}
 
-	checksToRun, err := validateAndExtractChecks(c.checks)
+	checksToRun, err := validateAndExtractChecks(c.checks, c.important)
 	if err != nil {
 		return auditChecks{}, err
 	}
