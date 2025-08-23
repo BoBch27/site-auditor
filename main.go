@@ -25,7 +25,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	websites, err := config.extractWebsites(ctx)
+	// collect websites based on specified input methods
+	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,83 +88,4 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 	}
 
 	return checksToRun, nil
-}
-
-// extractWebsites collects websites based on input method
-func (c *config) extractWebsites(ctx context.Context) ([]*website, error) {
-	var urls []string
-
-	// search for URLs from Google Places
-	if c.search != "" {
-		placesURLs, err := searchURLsFromGooglePlaces(ctx, c.search)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, placesURLs...)
-	}
-
-	// scrape URLs from Google Search
-	if c.scrape != "" {
-		scrapedURLs, err := scrapeURLsFromGoogleSearch(c.scrape)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, scrapedURLs...)
-	}
-
-	// extract URLs from CSV
-	if c.input != "" {
-		readURLs, err := readURLsFromCSV(c.input)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, readURLs...)
-	}
-
-	return c.cleanWebsites(urls), nil
-}
-
-// cleanWebsites filters and cleans passed in URLs
-func (c *config) cleanWebsites(rawURLs []string) []*website {
-	websites := []*website{}
-	seen := map[string]bool{}
-
-	for _, url := range rawURLs {
-		if url == "" {
-			continue
-		}
-
-		website, err := newWebsite(url)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		// avoid duplicates
-		if seen[website.domain] {
-			continue
-		}
-
-		// avoid domains which contain ignored words
-		if website.isIgnored(ignoredBusinessPatterns) {
-			continue
-		}
-
-		seen[website.domain] = true
-		websites = append(websites, website)
-	}
-
-	return websites
-}
-
-// patterns to ignore when filtering business websites
-var ignoredBusinessPatterns = []string{
-	"facebook.com", "instagram.com", "twitter.com", "linkedin.com",
-	"booksy.com", "treatwell.co.uk", "fresha.com",
-	"yelp.com", "yelp.co.uk", "yell.com", "tripadvisor.com",
-	"boots.com", "superdrug.com", "directory",
-	"google.com", "maps.google.com", "bizmapgo",
 }
