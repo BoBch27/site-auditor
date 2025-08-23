@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -63,7 +62,7 @@ func readURLsFromCSV(filename string) ([]string, error) {
 	}
 
 	if len(records) < 1 {
-		return nil, errors.New("CSV file is empty or missing header")
+		return nil, fmt.Errorf("CSV file is empty or missing header")
 	}
 
 	var urls []string
