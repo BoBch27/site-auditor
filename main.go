@@ -19,7 +19,11 @@ type config struct {
 func main() {
 	ctx := context.Background()
 	spinner := newSpinner()
+
+	// parse flags
+	spinner.start("Parsing input...")
 	config := parseFlags()
+	spinner.stop()
 
 	// validate flags
 	spinner.start("Validating input...")
