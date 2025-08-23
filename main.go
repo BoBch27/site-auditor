@@ -23,25 +23,25 @@ func main() {
 	// validate flags
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("❌ %v\n", err)
 	}
 
 	// collect websites based on specified input methods
 	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("❌ %v\n", err)
 	}
 
 	// perform audits in a headless browser
 	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("❌ %v\n", err)
 	}
 
 	// write audit results to csv
 	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("❌ %v\n", err)
 	}
 }
 
