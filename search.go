@@ -85,7 +85,7 @@ func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]str
 				PlaceID: p.PlaceID,
 			})
 			if err != nil {
-				fmt.Printf("failed place details for %s (ID: %s): %v", p.Name, p.PlaceID, err)
+				fmt.Printf("⚠️ failed place details for %s (ID: %s): %v\n", p.Name, p.PlaceID, err)
 				continue
 			}
 

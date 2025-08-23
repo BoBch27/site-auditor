@@ -278,7 +278,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 				return fmt.Errorf("failed to wait for page to be idle: %w", err)
 			}
 
-			fmt.Println("[warning]: page's idle check timed out")
+			fmt.Println("⚠️ page's idle check timed out")
 		}
 
 		err = chromedp.Sleep(1 * time.Second).Do(ctx)

@@ -88,7 +88,7 @@ func filterWebsites(rawURLs []string) []*website {
 
 		website, err := newWebsite(url)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("⚠️ %v\n", err)
 			continue
 		}
 
