@@ -20,6 +20,7 @@ func main() {
 	ctx := context.Background()
 	config := parseFlags()
 
+	// validate flags
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
 		log.Fatal(err)
@@ -37,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// write audit results
+	// write audit results to csv
 	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
 		log.Fatal(err)
