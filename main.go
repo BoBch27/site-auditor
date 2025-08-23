@@ -21,24 +21,28 @@ func main() {
 	config := parseFlags()
 
 	// validate flags
+	fmt.Println("Validating input...")
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
 
 	// collect websites based on specified input methods
+	fmt.Println("Extracting websites...")
 	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
 
 	// perform audits in a headless browser
+	fmt.Println("Auditing websites...")
 	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
 	}
 
 	// write audit results to csv
+	fmt.Println("Writing results...")
 	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
 		log.Fatalf("❌ %v\n", err)
