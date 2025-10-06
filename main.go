@@ -29,7 +29,7 @@ func main() {
 	spinner.start("Validating input...")
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
-		log.Fatalf("❌ %v\n", err)
+		log.Fatalf("\n❌ %v\n", err)
 	}
 	spinner.stop()
 
@@ -37,7 +37,7 @@ func main() {
 	spinner.start("Extracting websites...")
 	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
 	if err != nil {
-		log.Fatalf("❌ %v\n", err)
+		log.Fatalf("\n❌ %v\n", err)
 	}
 	spinner.stop()
 
@@ -45,7 +45,7 @@ func main() {
 	spinner.start("Auditing websites...")
 	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
-		log.Fatalf("❌ %v\n", err)
+		log.Fatalf("\n❌ %v\n", err)
 	}
 	spinner.stop()
 
@@ -53,7 +53,7 @@ func main() {
 	spinner.start("Writing results...")
 	err = writeResultsToCSV(config.output, audits)
 	if err != nil {
-		log.Fatalf("❌ %v\n", err)
+		log.Fatalf("\n❌ %v\n", err)
 	}
 	spinner.stop()
 
