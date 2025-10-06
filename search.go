@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 )
 
 const (
-	apiKey              = "AIzaSyBPFeYrbJBhQ0Zs35bIER3lmW_j-FKO3ak"
 	placeDetailQPS      = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
 	tileSizeMetres      = 500  // search radius per tile
 	boundsBufferPercent = 0.15 // bounds expansion percentage
@@ -40,6 +40,11 @@ func validatePlacesSearchPrompt(searchPrompt string) error {
 // (uses tile-based grid approach to circumvent Places API limits)
 func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]string, error) {
 	keyword, location, _ := strings.Cut(searchPrompt, " in ")
+
+	apiKey := os.Getenv("MAPS_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("failed to create maps client: Maps API key is required")
+	}
 
 	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
 	if err != nil {
