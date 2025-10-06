@@ -49,6 +49,10 @@ func validateOutputFile(filepath string) error {
 // readURLsFromCSV reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
 func readURLsFromCSV(filename string) ([]string, error) {
+	if filename == "" {
+		return nil, nil
+	}
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)

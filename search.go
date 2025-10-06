@@ -39,6 +39,10 @@ func validatePlacesSearchPrompt(searchPrompt string) error {
 // provided keyword in specified location and extracts company URLs
 // (uses tile-based grid approach to circumvent Places API limits)
 func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]string, error) {
+	if searchPrompt == "" {
+		return nil, nil
+	}
+
 	keyword, location, _ := strings.Cut(searchPrompt, " in ")
 
 	apiKey := os.Getenv("MAPS_API_KEY")

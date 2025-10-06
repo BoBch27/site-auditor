@@ -14,6 +14,10 @@ import (
 // scrapeURLsFromGoogleSearch queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
 func scrapeURLsFromGoogleSearch(searchPrompt string) ([]string, error) {
+	if searchPrompt == "" {
+		return nil, nil
+	}
+
 	urls := []string{}
 	searchQuery := url.QueryEscape(searchPrompt)
 

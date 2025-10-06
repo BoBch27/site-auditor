@@ -43,34 +43,25 @@ func extractWebsites(ctx context.Context, searchPrompt, scrapePrompt, inputFile 
 	var urls []string
 
 	// search for URLs from Google Places
-	if searchPrompt != "" {
-		placesURLs, err := searchURLsFromGooglePlaces(ctx, searchPrompt)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, placesURLs...)
+	placesURLs, err := searchURLsFromGooglePlaces(ctx, searchPrompt)
+	if err != nil {
+		return nil, err
 	}
+	urls = append(urls, placesURLs...)
 
 	// scrape URLs from Google Search
-	if scrapePrompt != "" {
-		scrapedURLs, err := scrapeURLsFromGoogleSearch(scrapePrompt)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, scrapedURLs...)
+	scrapedURLs, err := scrapeURLsFromGoogleSearch(scrapePrompt)
+	if err != nil {
+		return nil, err
 	}
+	urls = append(urls, scrapedURLs...)
 
 	// extract URLs from CSV
-	if inputFile != "" {
-		readURLs, err := readURLsFromCSV(inputFile)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, readURLs...)
+	readURLs, err := readURLsFromCSV(inputFile)
+	if err != nil {
+		return nil, err
 	}
+	urls = append(urls, readURLs...)
 
 	return filterWebsites(urls), nil
 }
