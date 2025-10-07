@@ -36,9 +36,14 @@ func main() {
 	}
 	spinner.stop()
 
-	// collect websites based on specified input methods
+	// initiate different url sources
+	spinner.start("Initialising website sources...")
+	extractors := newExtractors(config.search, config.scrape, config.input)
+	spinner.stop()
+
+	// collect websites from different sources
 	spinner.start("Extracting websites...")
-	websites, err := extractWebsites(ctx, config.search, config.scrape, config.input)
+	websites, err := extractWebsites(ctx, extractors)
 	if err != nil {
 		log.Fatalf("\n❌ %v\n", err)
 	}

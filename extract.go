@@ -17,9 +17,7 @@ func newExtractors(placesPrompt, searchPrompt, inputFile string) []extractor {
 }
 
 // extractWebsites collects websites from different sources
-func extractWebsites(ctx context.Context, placesPrompt, searchPrompt, inputFile string) ([]*website, error) {
-	extractors := newExtractors(placesPrompt, searchPrompt, inputFile)
-
+func extractWebsites(ctx context.Context, extractors []extractor) ([]*website, error) {
 	type result struct {
 		urls []string
 		err  error
