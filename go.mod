@@ -1,4 +1,4 @@
-module site-auditor
+module github.com/bobch27/site-auditor
 
 go 1.24.2
 
