@@ -42,7 +42,8 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 	defer writer.Flush()
 
 	headers := []string{"Website"}
-	headers = append(headers, getEnabledHeaders(results[0].checks)...)
+	enabledHeaders, _ := getEnabledChecks(results[0].checks)
+	headers = append(headers, enabledHeaders...)
 	headers = append(headers, "Audit Errors")
 
 	err = writer.Write(headers)
@@ -52,7 +53,8 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 
 	for _, res := range results {
 		row := []string{res.website}
-		row = append(row, getEnabledValues(res.checks)...)
+		_, enabledValues := getEnabledChecks(res.checks)
+		row = append(row, enabledValues...)
 		row = append(row, strings.Join(res.auditErrs, ";\n"))
 
 		err := writer.Write(row)
@@ -65,70 +67,46 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 	return nil
 }
 
-// getEnabledHeaders returns headers for enabled checks
-func getEnabledHeaders(checks auditChecks) []string {
-	var headers []string
+// getEnabledChecks returns headers and values for enabled checks
+func getEnabledChecks(checks auditChecks) (headers []string, values []string) {
 	if checks.secure.enabled {
 		headers = append(headers, "Secure")
-	}
-	if checks.lcp.enabled {
-		headers = append(headers, "LCP (ms)")
-	}
-	if checks.consoleErrs.enabled {
-		headers = append(headers, "Console Errors")
-	}
-	if checks.requestErrs.enabled {
-		headers = append(headers, "Request Errors")
-	}
-	if checks.missingHeaders.enabled {
-		headers = append(headers, "Missing Headers")
-	}
-	if checks.responsiveIssues.enabled {
-		headers = append(headers, "Responsive Issues")
-	}
-	if checks.formIssues.enabled {
-		headers = append(headers, "Form Issues")
-	}
-	if checks.techStack.enabled {
-		headers = append(headers, "Detected Tech")
-	}
-	if checks.screenshot.enabled {
-		headers = append(headers, "Screenshot")
-	}
-	return headers
-}
-
-// getEnabledValues returns formatted values for enabled checks
-func getEnabledValues(checks auditChecks) []string {
-	var values []string
-	if checks.secure.enabled {
 		values = append(values, boolToEmoji(checks.secure.result))
 	}
 	if checks.lcp.enabled {
+		headers = append(headers, "LCP (ms)")
 		values = append(values, fmt.Sprint(checks.lcp.result))
 	}
 	if checks.consoleErrs.enabled {
+		headers = append(headers, "Console Errors")
 		values = append(values, strings.Join(checks.consoleErrs.result, ";\n"))
 	}
 	if checks.requestErrs.enabled {
+		headers = append(headers, "Request Errors")
 		values = append(values, strings.Join(checks.requestErrs.result, ";\n"))
 	}
 	if checks.missingHeaders.enabled {
+		headers = append(headers, "Missing Headers")
 		values = append(values, strings.Join(checks.missingHeaders.result, ";\n"))
 	}
 	if checks.responsiveIssues.enabled {
+		headers = append(headers, "Responsive Issues")
 		values = append(values, strings.Join(checks.responsiveIssues.result, ";\n"))
 	}
 	if checks.formIssues.enabled {
+		headers = append(headers, "Form Issues")
 		values = append(values, strings.Join(checks.formIssues.result, ";\n"))
 	}
 	if checks.techStack.enabled {
+		headers = append(headers, "Detected Tech")
 		values = append(values, strings.Join(checks.techStack.result, ";\n"))
 	}
 	if checks.screenshot.enabled {
+		headers = append(headers, "Screenshot")
 		values = append(values, boolToEmoji(checks.screenshot.result))
 	}
-	return values
+
+	return headers, values
 }
 
 // boolToEmoji takes in a boolean and returns corresponding
