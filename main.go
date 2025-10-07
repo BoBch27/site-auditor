@@ -38,7 +38,10 @@ func main() {
 
 	// initiate different url sources
 	spinner.start("Initialising website sources...")
-	extractors := newExtractors(config.search, config.scrape, config.input)
+	extractors, err := newExtractors(config.search, config.scrape, config.input)
+	if err != nil {
+		log.Fatalf("\n❌ %v\n", err)
+	}
 	spinner.stop()
 
 	// collect websites from different sources
@@ -96,12 +99,7 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 		return auditChecks{}, fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
 	}
 
-	err := validateInputFile(c.input)
-	if err != nil {
-		return auditChecks{}, err
-	}
-
-	err = validateOutputFile(c.output)
+	err := validateOutputFile(c.output)
 	if err != nil {
 		return auditChecks{}, err
 	}

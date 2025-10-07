@@ -8,22 +8,6 @@ import (
 	"strings"
 )
 
-// validateInputFile checks if the input CSV file exists and is readable
-func validateInputFile(filename string) error {
-	if filename == "" {
-		return nil // not using input file
-	}
-
-	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("input file does not exist: %s", filename)
-	} else if err != nil {
-		return fmt.Errorf("cannot access input file: %w", err)
-	}
-
-	return nil
-}
-
 // csvSource extracts URLs by reading them from a CSV file
 // - it satisfies the extractor interface
 type csvSource struct {
@@ -31,18 +15,40 @@ type csvSource struct {
 }
 
 // newCSVSource creates a new csvSource instance
-func newCSVSource(inputFile string) *csvSource {
-	return &csvSource{inputFile}
+func newCSVSource(inputFile string) (*csvSource, error) {
+	if inputFile == "" {
+		return nil, nil // not using CSV source
+	}
+
+	newSource := csvSource{inputFile}
+	err := newSource.validateInputFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise csv source: %w", err)
+	}
+
+	return &newSource, nil
+}
+
+// validateInputFile checks if the input CSV file exists and is readable
+func (s *csvSource) validateInputFile() error {
+	_, err := os.Stat(s.inputFile)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("input file does not exist: %s", s.inputFile)
+	} else if err != nil {
+		return fmt.Errorf("cannot access input file: %w", err)
+	}
+
+	return nil
 }
 
 // extract reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
-func (c *csvSource) extract(_ context.Context) ([]string, error) {
-	if c.inputFile == "" {
+func (s *csvSource) extract(_ context.Context) ([]string, error) {
+	if s == nil || s.inputFile == "" {
 		return nil, nil
 	}
 
-	file, err := os.Open(c.inputFile)
+	file, err := os.Open(s.inputFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}

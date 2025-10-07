@@ -1,6 +1,9 @@
 package main
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // extractor defines the interface for extracting URLs from different sources
 type extractor interface {
@@ -8,12 +11,24 @@ type extractor interface {
 }
 
 // newExtractors is a factory function to initialise different URL sources
-func newExtractors(placesPrompt, searchPrompt, inputFile string) []extractor {
-	googlePlacesSource := newGooglePlacesSource(placesPrompt)
-	googleSearchSource := newGoogleSearchSource(searchPrompt)
-	csvSource := newCSVSource(inputFile)
+func newExtractors(placesPrompt, searchPrompt, inputFile string) ([]extractor, error) {
+	var extractors []extractor
 
-	return []extractor{googlePlacesSource, googleSearchSource, csvSource}
+	googlePlacesSource := newGooglePlacesSource(placesPrompt)
+	extractors = append(extractors, googlePlacesSource)
+
+	googleSearchSource := newGoogleSearchSource(searchPrompt)
+	extractors = append(extractors, googleSearchSource)
+
+	csvSource, err := newCSVSource(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise extractors: %w", err)
+	}
+	if csvSource != nil {
+		extractors = append(extractors, csvSource)
+	}
+
+	return extractors, nil
 }
 
 // extractWebsites collects websites from different sources
