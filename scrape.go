@@ -12,20 +12,20 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// searchScraper is responsible for querying Google with specified search prompt
-// in a headless browser, and extract found URLs - it satisfies the extractor interface
-type searchScraper struct {
+// googleSearchSource extracts URLs by scraping Google Search results
+// - it satisfies the extractor interface
+type googleSearchSource struct {
 	searchPrompt string
 }
 
-// newSearchScraper creates a new searchScraper instance
-func newSearchScraper(searchPrompt string) *searchScraper {
-	return &searchScraper{searchPrompt}
+// newGoogleSearchSource creates a new googleSearchSource instance
+func newGoogleSearchSource(searchPrompt string) *googleSearchSource {
+	return &googleSearchSource{searchPrompt}
 }
 
 // extract queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
-func (s *searchScraper) extract(_ context.Context) ([]string, error) {
+func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
 	if s.searchPrompt == "" {
 		return nil, nil
 	}

@@ -8,28 +8,28 @@ type extractor interface {
 }
 
 // extractWebsites collects websites based on input method
-func extractWebsites(ctx context.Context, searchPrompt, scrapePrompt, inputFile string) ([]*website, error) {
+func extractWebsites(ctx context.Context, placesPrompt, searchPrompt, inputFile string) ([]*website, error) {
 	var urls []string
 
 	// search for URLs from Google Places
-	placesSearcher := newPlacesSearcher(searchPrompt)
-	placesURLs, err := placesSearcher.extract(ctx)
+	placesSource := newGooglePlacesSource(placesPrompt)
+	placesURLs, err := placesSource.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
 	urls = append(urls, placesURLs...)
 
 	// scrape URLs from Google Search
-	searchScraper := newSearchScraper(scrapePrompt)
-	scrapedURLs, err := searchScraper.extract(ctx)
+	searchSource := newGoogleSearchSource(searchPrompt)
+	scrapedURLs, err := searchSource.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
 	urls = append(urls, scrapedURLs...)
 
 	// extract URLs from CSV
-	csvReader := newCSVReader(inputFile)
-	readURLs, err := csvReader.extract(ctx)
+	csvSource := newCSVSource(inputFile)
+	readURLs, err := csvSource.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
