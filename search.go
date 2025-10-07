@@ -14,6 +14,7 @@ import (
 // googlePlacesSource extracts URLs by searching Google Places API
 // - it satisfies the extractor interface
 type googlePlacesSource struct {
+	name                string
 	mapsClient          *maps.Client
 	searchPrompt        string
 	placeDetailQPS      int32   // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
@@ -38,6 +39,7 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 	}
 
 	newSource := googlePlacesSource{
+		name:                "google places source",
 		mapsClient:          client,
 		searchPrompt:        searchPrompt,
 		placeDetailQPS:      5,
@@ -51,6 +53,11 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 	}
 
 	return &newSource, nil
+}
+
+// getName returns the source name
+func (s *googlePlacesSource) getName() string {
+	return s.name
 }
 
 // validatePlacesSearchPrompt validates the search prompt format

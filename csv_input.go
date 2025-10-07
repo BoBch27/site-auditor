@@ -11,6 +11,7 @@ import (
 // csvSource extracts URLs by reading them from a CSV file
 // - it satisfies the extractor interface
 type csvSource struct {
+	name      string
 	inputFile string
 }
 
@@ -20,13 +21,18 @@ func newCSVSource(inputFile string) (*csvSource, error) {
 		return nil, nil // not using CSV source
 	}
 
-	newSource := csvSource{inputFile}
+	newSource := csvSource{name: "csv source", inputFile: inputFile}
 	err := newSource.validateInputFile()
 	if err != nil {
 		return nil, fmt.Errorf("failed csv input file validation: %w", err)
 	}
 
 	return &newSource, nil
+}
+
+// getName returns the source name
+func (s *csvSource) getName() string {
+	return s.name
 }
 
 // validateInputFile checks if the input CSV file exists and is readable

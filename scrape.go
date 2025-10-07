@@ -15,6 +15,7 @@ import (
 // googleSearchSource extracts URLs by scraping Google Search results
 // - it satisfies the extractor interface
 type googleSearchSource struct {
+	name         string
 	searchPrompt string
 }
 
@@ -24,7 +25,12 @@ func newGoogleSearchSource(searchPrompt string) *googleSearchSource {
 		return nil // not using Google Search source
 	}
 
-	return &googleSearchSource{searchPrompt}
+	return &googleSearchSource{name: "google search source", searchPrompt: searchPrompt}
+}
+
+// getName returns the source name
+func (s *googleSearchSource) getName() string {
+	return s.name
 }
 
 // extract queries Google with the specified search prompt in a

@@ -7,6 +7,7 @@ import (
 
 // extractor defines the interface for extracting URLs from different sources
 type extractor interface {
+	getName() string // makes debugging easier
 	extract(ctx context.Context) ([]string, error)
 }
 
@@ -51,7 +52,10 @@ func extractWebsites(ctx context.Context, extractors []extractor) ([]*website, e
 	for _, ext := range extractors {
 		go func(e extractor) {
 			urls, err := e.extract(ctx)
-			resultCh <- result{urls: urls, err: err}
+			resultCh <- result{
+				urls: urls,
+				err:  fmt.Errorf("failed to extract from %s: %w", e.getName(), err),
+			}
 		}(ext)
 	}
 
