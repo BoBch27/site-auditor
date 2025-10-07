@@ -143,7 +143,7 @@ func auditWebsites(ctx context.Context, websites []*website, checks auditChecks,
 		return nil
 	}))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open browser: %w", err)
 	}
 
 	sitesNo := len(websites)

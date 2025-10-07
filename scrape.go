@@ -44,7 +44,7 @@ func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
 		// send request and get doc
 		doc, err := s.getDoc(searchPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed search request: %w", err)
 		}
 
 		// grab links

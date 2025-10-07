@@ -24,7 +24,7 @@ func main() {
 	spinner.start("Parsing input...")
 	config, err := parseFlags()
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed flag parsing: %v\n", err)
 	}
 	spinner.stop()
 
@@ -32,7 +32,7 @@ func main() {
 	spinner.start("Validating input...")
 	checksToRun, err := config.validateAndExtract()
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed input validation: %v\n", err)
 	}
 	spinner.stop()
 
@@ -40,13 +40,13 @@ func main() {
 	spinner.start("Initialising resources...")
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
 	}
 
 	// initiate result sink
 	csvSink, err := newCSVSink(config.output)
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed csv output initialisation: %v\n", err)
 	}
 	spinner.stop()
 
@@ -54,7 +54,7 @@ func main() {
 	spinner.start("Extracting websites...")
 	websites, err := extractWebsites(ctx, extractors)
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed website extracting: %v\n", err)
 	}
 	spinner.stop()
 
@@ -62,7 +62,7 @@ func main() {
 	spinner.start("Auditing websites...")
 	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed website auditing: %v\n", err)
 	}
 	spinner.stop()
 
@@ -70,7 +70,7 @@ func main() {
 	spinner.start("Writing results...")
 	err = csvSink.writeResults(audits)
 	if err != nil {
-		log.Fatalf("\n❌ %v\n", err)
+		log.Fatalf("\n❌ failed results writing: %v\n", err)
 	}
 	spinner.stop()
 

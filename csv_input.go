@@ -23,7 +23,7 @@ func newCSVSource(inputFile string) (*csvSource, error) {
 	newSource := csvSource{inputFile}
 	err := newSource.validateInputFile()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise csv source: %w", err)
+		return nil, fmt.Errorf("failed csv input file validation: %w", err)
 	}
 
 	return &newSource, nil

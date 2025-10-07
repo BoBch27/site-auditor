@@ -16,7 +16,7 @@ func newExtractors(placesPrompt, searchPrompt, inputFile string) ([]extractor, e
 
 	googlePlacesSource, err := newGooglePlacesSource(placesPrompt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise extractors: %w", err)
+		return nil, fmt.Errorf("failed to initialise google places source: %w", err)
 	}
 	if googlePlacesSource != nil {
 		extractors = append(extractors, googlePlacesSource)
@@ -29,7 +29,7 @@ func newExtractors(placesPrompt, searchPrompt, inputFile string) ([]extractor, e
 
 	csvSource, err := newCSVSource(inputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise extractors: %w", err)
+		return nil, fmt.Errorf("failed to initialise csv source: %w", err)
 	}
 	if csvSource != nil {
 		extractors = append(extractors, csvSource)

@@ -80,7 +80,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 	// geocode location to get bounding box
 	bounds, err := s.geocodeBounds(ctx, location)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to geocode %s: %w", location, err)
 	}
 
 	// expand bounds to include outskirts
@@ -99,7 +99,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 		// get nearby places
 		places, err := s.searchNearbyPlaces(ctx, keyword, centre.Lat, centre.Lng)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed nearby search for %s: %w", keyword, err)
 		}
 
 		// get place details (needed for website data)
@@ -136,7 +136,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 func (s *googlePlacesSource) geocodeBounds(ctx context.Context, location string) (maps.LatLngBounds, error) {
 	res, err := s.mapsClient.Geocode(ctx, &maps.GeocodingRequest{Address: location})
 	if err != nil {
-		return maps.LatLngBounds{}, fmt.Errorf("failed to geocode %s: %w", location, err)
+		return maps.LatLngBounds{}, fmt.Errorf("failed Geocode API call: %w", err)
 	}
 
 	if len(res) == 0 {
@@ -209,7 +209,7 @@ func (s *googlePlacesSource) searchNearbyPlaces(
 	for {
 		res, err := s.mapsClient.NearbySearch(ctx, req)
 		if err != nil {
-			return nil, fmt.Errorf("failed nearby search for %v: %w", req.Location, err)
+			return nil, fmt.Errorf("failed nearby search API call for %v: %w", req.Location, err)
 		}
 
 		allPlaces = append(allPlaces, res.Results...)
