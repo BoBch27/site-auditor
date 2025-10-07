@@ -7,13 +7,18 @@ type extractor interface {
 	extract(ctx context.Context) ([]string, error)
 }
 
-// extractWebsites collects websites based on input method
+// newExtractors is a factory function to initialise different URL sources
+func newExtractors(placesPrompt, searchPrompt, inputFile string) []extractor {
+	googlePlacesSource := newGooglePlacesSource(placesPrompt)
+	googleSearchSource := newGoogleSearchSource(searchPrompt)
+	csvSource := newCSVSource(inputFile)
+
+	return []extractor{googlePlacesSource, googleSearchSource, csvSource}
+}
+
+// extractWebsites collects websites from different sources
 func extractWebsites(ctx context.Context, placesPrompt, searchPrompt, inputFile string) ([]*website, error) {
-	extractors := []extractor{
-		newGooglePlacesSource(placesPrompt),
-		newGoogleSearchSource(searchPrompt),
-		newCSVSource(inputFile),
-	}
+	extractors := newExtractors(placesPrompt, searchPrompt, inputFile)
 
 	type result struct {
 		urls []string
