@@ -14,8 +14,13 @@ type extractor interface {
 func newExtractors(placesPrompt, searchPrompt, inputFile string) ([]extractor, error) {
 	var extractors []extractor
 
-	googlePlacesSource := newGooglePlacesSource(placesPrompt)
-	extractors = append(extractors, googlePlacesSource)
+	googlePlacesSource, err := newGooglePlacesSource(placesPrompt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise extractors: %w", err)
+	}
+	if googlePlacesSource != nil {
+		extractors = append(extractors, googlePlacesSource)
+	}
 
 	googleSearchSource := newGoogleSearchSource(searchPrompt)
 	extractors = append(extractors, googleSearchSource)

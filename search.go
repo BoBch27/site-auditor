@@ -11,30 +11,6 @@ import (
 	"googlemaps.github.io/maps"
 )
 
-const (
-	placeDetailQPS      = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
-	tileSizeMetres      = 500  // search radius per tile
-	boundsBufferPercent = 0.15 // bounds expansion percentage
-)
-
-// validatePlacesSearchPrompt validates the search prompt format
-func validatePlacesSearchPrompt(searchPrompt string) error {
-	if searchPrompt == "" {
-		return nil // not using search
-	}
-
-	if !strings.Contains(searchPrompt, " in ") {
-		return fmt.Errorf("search prompt must be in format: \"[Business Type] in [Location]\"")
-	}
-
-	parts := strings.Split(searchPrompt, " in ")
-	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
-		return fmt.Errorf("search prompt must contain both business type and location")
-	}
-
-	return nil
-}
-
 // googlePlacesSource extracts URLs by searching Google Places API
 // - it satisfies the extractor interface
 type googlePlacesSource struct {
@@ -42,19 +18,49 @@ type googlePlacesSource struct {
 }
 
 // newGooglePlacesSource creates a new googlePlacesSource instance
-func newGooglePlacesSource(searchPrompt string) *googlePlacesSource {
-	return &googlePlacesSource{searchPrompt}
+func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
+	if searchPrompt == "" {
+		return nil, nil // not using Google Places source
+	}
+
+	newSource := googlePlacesSource{searchPrompt}
+	err := newSource.validatePlacesSearchPrompt()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise google places source: %w", err)
+	}
+
+	return &newSource, nil
 }
+
+// validatePlacesSearchPrompt validates the search prompt format
+func (s *googlePlacesSource) validatePlacesSearchPrompt() error {
+	if !strings.Contains(s.searchPrompt, " in ") {
+		return fmt.Errorf("search prompt must be in format: \"[Business Type] in [Location]\"")
+	}
+
+	parts := strings.Split(s.searchPrompt, " in ")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+		return fmt.Errorf("search prompt must contain both business type and location")
+	}
+
+	return nil
+}
+
+const (
+	placeDetailQPS      = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
+	tileSizeMetres      = 500  // search radius per tile
+	boundsBufferPercent = 0.15 // bounds expansion percentage
+)
 
 // extract queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
 // (uses tile-based grid approach to circumvent Places API limits)
-func (p *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
-	if p.searchPrompt == "" {
+func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
+	if s == nil || s.searchPrompt == "" {
 		return nil, nil
 	}
 
-	keyword, location, _ := strings.Cut(p.searchPrompt, " in ")
+	keyword, location, _ := strings.Cut(s.searchPrompt, " in ")
 
 	apiKey := os.Getenv("MAPS_API_KEY")
 	if apiKey == "" {
