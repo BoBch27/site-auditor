@@ -14,8 +14,11 @@ import (
 // googlePlacesSource extracts URLs by searching Google Places API
 // - it satisfies the extractor interface
 type googlePlacesSource struct {
-	mapsClient   *maps.Client
-	searchPrompt string
+	mapsClient          *maps.Client
+	searchPrompt        string
+	placeDetailQPS      int32   // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
+	tileSizeMetres      float64 // search radius per tile
+	boundsBufferPercent float64 // bounds expansion percentage
 }
 
 // newGooglePlacesSource creates a new googlePlacesSource instance
@@ -34,7 +37,14 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 		return nil, fmt.Errorf("failed to create maps client: %w", err)
 	}
 
-	newSource := googlePlacesSource{client, searchPrompt}
+	newSource := googlePlacesSource{
+		mapsClient:          client,
+		searchPrompt:        searchPrompt,
+		placeDetailQPS:      5,
+		tileSizeMetres:      500,
+		boundsBufferPercent: 0.15,
+	}
+
 	err = newSource.validatePlacesSearchPrompt()
 	if err != nil {
 		return nil, fmt.Errorf("failed google places search prompt validation: %w", err)
@@ -57,12 +67,6 @@ func (s *googlePlacesSource) validatePlacesSearchPrompt() error {
 	return nil
 }
 
-const (
-	placeDetailQPS      = 5    // limit PlaceDetails calls to avoid OVER_QUERY_LIMIT
-	tileSizeMetres      = 500  // search radius per tile
-	boundsBufferPercent = 0.15 // bounds expansion percentage
-)
-
 // extract queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
 // (uses tile-based grid approach to circumvent Places API limits)
@@ -80,20 +84,20 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 	}
 
 	// expand bounds to include outskirts
-	expandedBounds := s.expandBounds(bounds, boundsBufferPercent)
+	expandedBounds := s.expandBounds(bounds)
 
 	// generate tile centres
-	tileCentres := s.generateTiles(expandedBounds, tileSizeMetres)
+	tileCentres := s.generateTiles(expandedBounds)
 
 	urls := []string{}
 	results := map[string]string{} // PlaceID -> Website
 
-	ticker := time.NewTicker(time.Second / placeDetailQPS)
+	ticker := time.NewTicker(time.Second / time.Duration(s.placeDetailQPS))
 	defer ticker.Stop()
 
 	for _, centre := range tileCentres {
 		// get nearby places
-		places, err := s.searchNearbyPlaces(ctx, keyword, centre.Lat, centre.Lng, tileSizeMetres)
+		places, err := s.searchNearbyPlaces(ctx, keyword, centre.Lat, centre.Lng)
 		if err != nil {
 			return nil, err
 		}
@@ -143,12 +147,12 @@ func (s *googlePlacesSource) geocodeBounds(ctx context.Context, location string)
 }
 
 // expandBounds adds a buffer around the original bounds
-func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds, bufferPercent float64) maps.LatLngBounds {
+func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds) maps.LatLngBounds {
 	latRange := bounds.NorthEast.Lat - bounds.SouthWest.Lat
 	lngRange := bounds.NorthEast.Lng - bounds.SouthWest.Lng
 
-	latBuffer := latRange * bufferPercent
-	lngBuffer := lngRange * bufferPercent
+	latBuffer := latRange * s.boundsBufferPercent
+	lngBuffer := lngRange * s.boundsBufferPercent
 
 	return maps.LatLngBounds{
 		NorthEast: maps.LatLng{
@@ -163,9 +167,9 @@ func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds, bufferPercen
 }
 
 // generateTiles splits bounds into tile centres for searches
-func (s *googlePlacesSource) generateTiles(bounds maps.LatLngBounds, tileSize float64) []maps.LatLng {
-	latStep := s.metresToLat(tileSize)
-	lngStep := s.metresToLng(tileSize, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
+func (s *googlePlacesSource) generateTiles(bounds maps.LatLngBounds) []maps.LatLng {
+	latStep := s.metresToLat(s.tileSizeMetres)
+	lngStep := s.metresToLng(s.tileSizeMetres, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
 
 	var tiles []maps.LatLng
 	for lat := bounds.SouthWest.Lat; lat <= bounds.NorthEast.Lat; lat += latStep {
@@ -192,13 +196,13 @@ func (s *googlePlacesSource) metresToLng(m, lat float64) float64 {
 func (s *googlePlacesSource) searchNearbyPlaces(
 	ctx context.Context,
 	keyword string,
-	lat, lng, radiusMetres float64,
+	lat, lng float64,
 ) ([]maps.PlacesSearchResult, error) {
 	allPlaces := []maps.PlacesSearchResult{}
 
 	req := &maps.NearbySearchRequest{
 		Location: &maps.LatLng{Lat: lat, Lng: lng},
-		Radius:   uint(radiusMetres),
+		Radius:   uint(s.tileSizeMetres),
 		Keyword:  keyword,
 	}
 
