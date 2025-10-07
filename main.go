@@ -22,7 +22,10 @@ func main() {
 
 	// parse flags
 	spinner.start("Parsing input...")
-	config := parseFlags()
+	config, err := parseFlags()
+	if err != nil {
+		log.Fatalf("\n❌ %v\n", err)
+	}
 	spinner.stop()
 
 	// validate flags
@@ -61,7 +64,7 @@ func main() {
 }
 
 // parseFlags parses command line flags and returns a config
-func parseFlags() config {
+func parseFlags() (*config, error) {
 	var config config
 
 	// define flags
@@ -73,7 +76,12 @@ func parseFlags() config {
 	flag.BoolVar(&config.important, "important", false, "Run only critical/important checks (faster)")
 
 	flag.Parse()
-	return config
+
+	if flag.NArg() > 0 {
+		return nil, fmt.Errorf("unexpected arguments: %v", flag.Args())
+	}
+
+	return &config, nil
 }
 
 // validateAndExtract ensures the configuration is valid and
