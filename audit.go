@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -495,14 +496,21 @@ func checkSecurityHeaders(resHeaders network.Headers) []string {
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
 func captureScreenshot(ctx context.Context, domain string) (bool, error) {
+	// ensure directory exists
+	const screenshotDir = "screenshots"
+	err := os.MkdirAll(screenshotDir, 0755)
+	if err != nil {
+		return false, fmt.Errorf("failed to create screenshot directory: %w", err)
+	}
+
 	var screenshot []byte
 
-	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
+	err = chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
 	if err != nil {
 		return false, fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
-	filename := fmt.Sprintf("screenshots/screenshot_%s.jpg", domain)
+	filename := filepath.Join(screenshotDir, fmt.Sprintf("screenshot_%s.jpg", domain))
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
 		return false, fmt.Errorf("failed to write screenshot: %w", err)
