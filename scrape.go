@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -11,15 +12,26 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// scrapeURLsFromGoogleSearch queries Google with the specified search prompt in a
+// searchScraper is responsible for querying Google with specified search prompt
+// in a headless browser, and extract found URLs - it satisfies the extractor interface
+type searchScraper struct {
+	searchPrompt string
+}
+
+// newSearchScraper creates a new searchScraper instance
+func newSearchScraper(searchPrompt string) *searchScraper {
+	return &searchScraper{searchPrompt}
+}
+
+// extract queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
-func scrapeURLsFromGoogleSearch(searchPrompt string) ([]string, error) {
-	if searchPrompt == "" {
+func (s *searchScraper) extract(_ context.Context) ([]string, error) {
+	if s.searchPrompt == "" {
 		return nil, nil
 	}
 
 	urls := []string{}
-	searchQuery := url.QueryEscape(searchPrompt)
+	searchQuery := url.QueryEscape(s.searchPrompt)
 
 	for page := range 9 { // scrape first 10 pages (0 -> 9)
 		start := page * 10

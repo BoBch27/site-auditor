@@ -19,7 +19,8 @@ func extractWebsites(ctx context.Context, searchPrompt, scrapePrompt, inputFile 
 	urls = append(urls, placesURLs...)
 
 	// scrape URLs from Google Search
-	scrapedURLs, err := scrapeURLsFromGoogleSearch(scrapePrompt)
+	searchScraper := newSearchScraper(scrapePrompt)
+	scrapedURLs, err := searchScraper.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
