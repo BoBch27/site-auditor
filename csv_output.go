@@ -15,21 +15,21 @@ type csvSink struct {
 // newCSVSink creates a new csvSink instance
 func newCSVSink(outputFile string) (*csvSink, error) {
 	newSink := csvSink{outputFile}
-	err := newSink.validateOutputFile()
+	err := newSink.validateAndCreateOutputFile()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise csv sink: %w", err)
+		return nil, fmt.Errorf("failed csv output file validation/creation: %w", err)
 	}
 
 	return &newSink, nil
 }
 
-// validateOutputFile ensures the output directory exists and is writable
-func (s *csvSink) validateOutputFile() error {
+// validateAndCreateOutputFile ensures the output directory exists and is writable
+func (s *csvSink) validateAndCreateOutputFile() error {
 	if s.outputFile == "" {
 		return fmt.Errorf("output path cannot be empty")
 	}
 
-	// check if we can create the output file by attempting to create it
+	// create the output file
 	// this validates both directory existence and write permissions
 	file, err := os.Create(s.outputFile)
 	if err != nil {
@@ -37,20 +37,14 @@ func (s *csvSink) validateOutputFile() error {
 	}
 	file.Close()
 
-	// remove the test file
-	err = os.Remove(s.outputFile)
-	if err != nil {
-		return fmt.Errorf("cannot remove output test file %s: %w", s.outputFile, err)
-	}
-
 	return nil
 }
 
 // writeResults writes the results to the output CSV
 func (s *csvSink) writeResults(results []auditResult) error {
-	outFile, err := os.Create(s.outputFile)
+	outFile, err := os.Open(s.outputFile)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer outFile.Close()
 
