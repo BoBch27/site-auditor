@@ -24,20 +24,20 @@ func validateInputFile(filename string) error {
 	return nil
 }
 
-// csvExtractor is responsible for reading a CSV file and extracting URLs
+// csvReader is responsible for reading a CSV file and extracting URLs
 // from it - it satisfies the extractor interface
-type csvExtractor struct {
+type csvReader struct {
 	inputFile string
 }
 
-// newCSVExtractor creates a new csvExtractor instance
-func newCSVExtractor(inputFile string) *csvExtractor {
-	return &csvExtractor{inputFile}
+// newCSVReader creates a new csvReader instance
+func newCSVReader(inputFile string) *csvReader {
+	return &csvReader{inputFile}
 }
 
 // extract reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
-func (c *csvExtractor) extract(_ context.Context) ([]string, error) {
+func (c *csvReader) extract(_ context.Context) ([]string, error) {
 	if c.inputFile == "" {
 		return nil, nil
 	}
