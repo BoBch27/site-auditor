@@ -73,16 +73,16 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 	}
 
 	// geocode location to get bounding box
-	bounds, err := geocodeBounds(ctx, client, location)
+	bounds, err := s.geocodeBounds(ctx, client, location)
 	if err != nil {
 		return nil, err
 	}
 
 	// expand bounds to include outskirts
-	expandedBounds := expandBounds(bounds, boundsBufferPercent)
+	expandedBounds := s.expandBounds(bounds, boundsBufferPercent)
 
 	// generate tile centres
-	tileCentres := generateTiles(expandedBounds, tileSizeMetres)
+	tileCentres := s.generateTiles(expandedBounds, tileSizeMetres)
 
 	urls := []string{}
 	results := map[string]string{} // PlaceID -> Website
@@ -92,7 +92,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 
 	for _, centre := range tileCentres {
 		// get nearby places
-		places, err := searchNearbyPlaces(ctx, client, keyword, centre.Lat, centre.Lng, tileSizeMetres)
+		places, err := s.searchNearbyPlaces(ctx, client, keyword, centre.Lat, centre.Lng, tileSizeMetres)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 }
 
 // geocodeBounds gets the viewport bounds for a place name
-func geocodeBounds(ctx context.Context, client *maps.Client, location string) (maps.LatLngBounds, error) {
+func (s *googlePlacesSource) geocodeBounds(ctx context.Context, client *maps.Client, location string) (maps.LatLngBounds, error) {
 	res, err := client.Geocode(ctx, &maps.GeocodingRequest{Address: location})
 	if err != nil {
 		return maps.LatLngBounds{}, fmt.Errorf("failed to geocode %s: %w", location, err)
@@ -142,7 +142,7 @@ func geocodeBounds(ctx context.Context, client *maps.Client, location string) (m
 }
 
 // expandBounds adds a buffer around the original bounds
-func expandBounds(bounds maps.LatLngBounds, bufferPercent float64) maps.LatLngBounds {
+func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds, bufferPercent float64) maps.LatLngBounds {
 	latRange := bounds.NorthEast.Lat - bounds.SouthWest.Lat
 	lngRange := bounds.NorthEast.Lng - bounds.SouthWest.Lng
 
@@ -162,9 +162,9 @@ func expandBounds(bounds maps.LatLngBounds, bufferPercent float64) maps.LatLngBo
 }
 
 // generateTiles splits bounds into tile centres for searches
-func generateTiles(bounds maps.LatLngBounds, tileSize float64) []maps.LatLng {
-	latStep := metresToLat(tileSize)
-	lngStep := metresToLng(tileSize, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
+func (s *googlePlacesSource) generateTiles(bounds maps.LatLngBounds, tileSize float64) []maps.LatLng {
+	latStep := s.metresToLat(tileSize)
+	lngStep := s.metresToLng(tileSize, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
 
 	var tiles []maps.LatLng
 	for lat := bounds.SouthWest.Lat; lat <= bounds.NorthEast.Lat; lat += latStep {
@@ -177,18 +177,18 @@ func generateTiles(bounds maps.LatLngBounds, tileSize float64) []maps.LatLng {
 }
 
 // metresToLat converts metres to latitude degrees
-func metresToLat(m float64) float64 {
+func (s *googlePlacesSource) metresToLat(m float64) float64 {
 	return m / 111320.0
 }
 
 // metresToLng converts metres to longitude degrees at a given latitude
-func metresToLng(m, lat float64) float64 {
+func (s *googlePlacesSource) metresToLng(m, lat float64) float64 {
 	return m / (111320.0 * math.Cos(lat*math.Pi/180))
 }
 
 // searchNearbyPlaces fetches up to 60 results for a given lat/lng,
 // filtered by keyword
-func searchNearbyPlaces(
+func (s *googlePlacesSource) searchNearbyPlaces(
 	ctx context.Context,
 	client *maps.Client,
 	keyword string,
