@@ -42,7 +42,7 @@ func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
 		searchPath := fmt.Sprintf("/search?q=%s&start=%d", searchQuery, start)
 
 		// send request and get doc
-		doc, err := getDoc(searchPath)
+		doc, err := s.getDoc(searchPath)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +66,7 @@ func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
 
 // getDoc sends an HTTP Get request to Google, checks if there's a redirect link
 // and sends a request to it if so, before returning a parsed HTML document
-func getDoc(searchPath string) (*goquery.Document, error) {
+func (s *googleSearchSource) getDoc(searchPath string) (*goquery.Document, error) {
 	req, _ := http.NewRequest("GET", "https://google.com"+searchPath, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
 
@@ -89,7 +89,7 @@ func getDoc(searchPath string) (*goquery.Document, error) {
 	redirectLink, exists := doc.Find("div#yvlrue a").First().Attr("href")
 	if exists {
 		// send request to redirect link
-		doc, err = getDoc(redirectLink)
+		doc, err = s.getDoc(redirectLink)
 	}
 
 	return doc, err
