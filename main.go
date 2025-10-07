@@ -44,6 +44,14 @@ func main() {
 	}
 	spinner.stop()
 
+	// initiate result sink
+	spinner.start("Initialising result sink...")
+	csvSink, err := newCSVSink(config.output)
+	if err != nil {
+		log.Fatalf("\n❌ %v\n", err)
+	}
+	spinner.stop()
+
 	// collect websites from different sources
 	spinner.start("Extracting websites...")
 	websites, err := extractWebsites(ctx, extractors)
@@ -62,7 +70,7 @@ func main() {
 
 	// write audit results to csv
 	spinner.start("Writing results...")
-	err = writeResultsToCSV(config.output, audits)
+	err = csvSink.writeResults(audits)
 	if err != nil {
 		log.Fatalf("\n❌ %v\n", err)
 	}
@@ -97,11 +105,6 @@ func parseFlags() (*config, error) {
 func (c *config) validateAndExtract() (auditChecks, error) {
 	if c.search == "" && c.scrape == "" && c.input == "" {
 		return auditChecks{}, fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
-	}
-
-	err := validateOutputFile(c.output)
-	if err != nil {
-		return auditChecks{}, err
 	}
 
 	return parseAuditChecks(c.checks, c.important)

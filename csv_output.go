@@ -7,32 +7,48 @@ import (
 	"strings"
 )
 
+// csvSink handles writing audit results to a CSV file
+type csvSink struct {
+	outputFile string
+}
+
+// newCSVSink creates a new csvSink instance
+func newCSVSink(outputFile string) (*csvSink, error) {
+	newSink := csvSink{outputFile}
+	err := newSink.validateOutputFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise csv sink: %w", err)
+	}
+
+	return &newSink, nil
+}
+
 // validateOutputFile ensures the output directory exists and is writable
-func validateOutputFile(filepath string) error {
-	if filepath == "" {
+func (s *csvSink) validateOutputFile() error {
+	if s.outputFile == "" {
 		return fmt.Errorf("output path cannot be empty")
 	}
 
 	// check if we can create the output file by attempting to create it
 	// this validates both directory existence and write permissions
-	file, err := os.Create(filepath)
+	file, err := os.Create(s.outputFile)
 	if err != nil {
-		return fmt.Errorf("cannot create output file %s: %w", filepath, err)
+		return fmt.Errorf("cannot create output file %s: %w", s.outputFile, err)
 	}
 	file.Close()
 
 	// remove the test file
-	err = os.Remove(filepath)
+	err = os.Remove(s.outputFile)
 	if err != nil {
-		return fmt.Errorf("cannot remove output test file %s: %w", filepath, err)
+		return fmt.Errorf("cannot remove output test file %s: %w", s.outputFile, err)
 	}
 
 	return nil
 }
 
-// writeResultsToCSV writes the results to the output CSV
-func writeResultsToCSV(filepath string, results []auditResult) error {
-	outFile, err := os.Create(filepath)
+// writeResults writes the results to the output CSV
+func (s *csvSink) writeResults(results []auditResult) error {
+	outFile, err := os.Create(s.outputFile)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
@@ -42,7 +58,7 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 	defer writer.Flush()
 
 	headers := []string{"Website"}
-	enabledHeaders, _ := getEnabledChecks(results[0].checks)
+	enabledHeaders, _ := s.getEnabledChecks(results[0].checks)
 	headers = append(headers, enabledHeaders...)
 	headers = append(headers, "Audit Errors")
 
@@ -53,7 +69,7 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 
 	for _, res := range results {
 		row := []string{res.website}
-		_, enabledValues := getEnabledChecks(res.checks)
+		_, enabledValues := s.getEnabledChecks(res.checks)
 		row = append(row, enabledValues...)
 		row = append(row, strings.Join(res.auditErrs, ";\n"))
 
@@ -68,10 +84,10 @@ func writeResultsToCSV(filepath string, results []auditResult) error {
 }
 
 // getEnabledChecks returns headers and values for enabled checks
-func getEnabledChecks(checks auditChecks) (headers []string, values []string) {
+func (s *csvSink) getEnabledChecks(checks auditChecks) (headers []string, values []string) {
 	if checks.secure.enabled {
 		headers = append(headers, "Secure")
-		values = append(values, boolToEmoji(checks.secure.result))
+		values = append(values, s.boolToEmoji(checks.secure.result))
 	}
 	if checks.lcp.enabled {
 		headers = append(headers, "LCP (ms)")
@@ -103,7 +119,7 @@ func getEnabledChecks(checks auditChecks) (headers []string, values []string) {
 	}
 	if checks.screenshot.enabled {
 		headers = append(headers, "Screenshot")
-		values = append(values, boolToEmoji(checks.screenshot.result))
+		values = append(values, s.boolToEmoji(checks.screenshot.result))
 	}
 
 	return headers, values
@@ -111,7 +127,7 @@ func getEnabledChecks(checks auditChecks) (headers []string, values []string) {
 
 // boolToEmoji takes in a boolean and returns corresponding
 // emoji to visual inspection
-func boolToEmoji(ok bool) string {
+func (s *csvSink) boolToEmoji(ok bool) string {
 	if !ok {
 		return "❌"
 	}
