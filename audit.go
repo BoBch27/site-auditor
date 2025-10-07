@@ -104,6 +104,10 @@ func parseAuditChecks(checksStr string, important bool) (auditChecks, error) {
 // auditWebsites opens all sites in a headless browser and executes various checks
 // before returning a set of audit results
 func auditWebsites(ctx context.Context, websites []*website, checks auditChecks, important bool) ([]auditResult, error) {
+	if len(websites) == 0 {
+		return nil, fmt.Errorf("no websites to audit")
+	}
+
 	// setup browser options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
