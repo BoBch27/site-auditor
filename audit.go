@@ -510,11 +510,23 @@ func captureScreenshot(ctx context.Context, domain string) (bool, error) {
 		return false, fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
-	filename := filepath.Join(screenshotDir, fmt.Sprintf("screenshot_%s.jpg", domain))
+	// sanitise domain for filesystem
+	safeDomain := sanitiseFilename(domain)
+	filename := filepath.Join(screenshotDir, fmt.Sprintf("screenshot_%s.jpg", safeDomain))
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
 		return false, fmt.Errorf("failed to write screenshot: %w", err)
 	}
 
 	return true, nil
+}
+
+// sanitiseFilename removes characters that could cause filesystem issues
+func sanitiseFilename(s string) string {
+	// replace problematic characters
+	s = strings.ReplaceAll(s, "/", "_")
+	s = strings.ReplaceAll(s, "\\", "_")
+	s = strings.ReplaceAll(s, ":", "_")
+
+	return s
 }
