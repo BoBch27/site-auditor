@@ -14,6 +14,7 @@ import (
 // googlePlacesSource extracts URLs by searching Google Places API
 // - it satisfies the extractor interface
 type googlePlacesSource struct {
+	mapsClient   *maps.Client
 	searchPrompt string
 }
 
@@ -23,10 +24,20 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 		return nil, nil // not using Google Places source
 	}
 
-	newSource := googlePlacesSource{searchPrompt}
-	err := newSource.validatePlacesSearchPrompt()
+	apiKey := os.Getenv("MAPS_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("failed to create maps client: Maps API key is required")
+	}
+
+	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise google places source: %w", err)
+		return nil, fmt.Errorf("failed to create maps client: %w", err)
+	}
+
+	newSource := googlePlacesSource{client, searchPrompt}
+	err = newSource.validatePlacesSearchPrompt()
+	if err != nil {
+		return nil, fmt.Errorf("failed google places search prompt validation: %w", err)
 	}
 
 	return &newSource, nil
@@ -62,18 +73,8 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 
 	keyword, location, _ := strings.Cut(s.searchPrompt, " in ")
 
-	apiKey := os.Getenv("MAPS_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("failed to create maps client: Maps API key is required")
-	}
-
-	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create maps client: %w", err)
-	}
-
 	// geocode location to get bounding box
-	bounds, err := s.geocodeBounds(ctx, client, location)
+	bounds, err := s.geocodeBounds(ctx, location)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 
 	for _, centre := range tileCentres {
 		// get nearby places
-		places, err := s.searchNearbyPlaces(ctx, client, keyword, centre.Lat, centre.Lng, tileSizeMetres)
+		places, err := s.searchNearbyPlaces(ctx, keyword, centre.Lat, centre.Lng, tileSizeMetres)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +108,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 			<-ticker.C // throttle PlaceDetails
 
 			// make a place details query
-			details, err := client.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
+			details, err := s.mapsClient.PlaceDetails(ctx, &maps.PlaceDetailsRequest{
 				PlaceID: p.PlaceID,
 			})
 			if err != nil {
@@ -128,8 +129,8 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 }
 
 // geocodeBounds gets the viewport bounds for a place name
-func (s *googlePlacesSource) geocodeBounds(ctx context.Context, client *maps.Client, location string) (maps.LatLngBounds, error) {
-	res, err := client.Geocode(ctx, &maps.GeocodingRequest{Address: location})
+func (s *googlePlacesSource) geocodeBounds(ctx context.Context, location string) (maps.LatLngBounds, error) {
+	res, err := s.mapsClient.Geocode(ctx, &maps.GeocodingRequest{Address: location})
 	if err != nil {
 		return maps.LatLngBounds{}, fmt.Errorf("failed to geocode %s: %w", location, err)
 	}
@@ -190,7 +191,6 @@ func (s *googlePlacesSource) metresToLng(m, lat float64) float64 {
 // filtered by keyword
 func (s *googlePlacesSource) searchNearbyPlaces(
 	ctx context.Context,
-	client *maps.Client,
 	keyword string,
 	lat, lng, radiusMetres float64,
 ) ([]maps.PlacesSearchResult, error) {
@@ -203,7 +203,7 @@ func (s *googlePlacesSource) searchNearbyPlaces(
 	}
 
 	for {
-		res, err := client.NearbySearch(ctx, req)
+		res, err := s.mapsClient.NearbySearch(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed nearby search for %v: %w", req.Location, err)
 		}
