@@ -35,15 +35,27 @@ func validatePlacesSearchPrompt(searchPrompt string) error {
 	return nil
 }
 
-// searchURLsFromGooglePlaces queries Google Places for businesses matching
+// placesSearcher is responsible for querying Google Places for businesses matching
+// specified search prompt, and extract found URLs - it satisfies
+// the extractor interface
+type placesSearcher struct {
+	searchPrompt string
+}
+
+// newPlacesSearcher creates a new placesSearcher instance
+func newPlacesSearcher(searchPrompt string) *placesSearcher {
+	return &placesSearcher{searchPrompt}
+}
+
+// extract queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
 // (uses tile-based grid approach to circumvent Places API limits)
-func searchURLsFromGooglePlaces(ctx context.Context, searchPrompt string) ([]string, error) {
-	if searchPrompt == "" {
+func (p *placesSearcher) extract(ctx context.Context) ([]string, error) {
+	if p.searchPrompt == "" {
 		return nil, nil
 	}
 
-	keyword, location, _ := strings.Cut(searchPrompt, " in ")
+	keyword, location, _ := strings.Cut(p.searchPrompt, " in ")
 
 	apiKey := os.Getenv("MAPS_API_KEY")
 	if apiKey == "" {

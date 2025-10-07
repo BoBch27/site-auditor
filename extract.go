@@ -12,7 +12,8 @@ func extractWebsites(ctx context.Context, searchPrompt, scrapePrompt, inputFile 
 	var urls []string
 
 	// search for URLs from Google Places
-	placesURLs, err := searchURLsFromGooglePlaces(ctx, searchPrompt)
+	placesSearcher := newPlacesSearcher(searchPrompt)
+	placesURLs, err := placesSearcher.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
