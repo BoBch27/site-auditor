@@ -35,9 +35,9 @@ type auditCheck[T interface{}] struct {
 	result  T
 }
 
-// validateAndExtractChecks takes in a comma-separated string and specifies
+// parseAuditChecks takes in a comma-separated string, validates it, and specifies
 // which audit checks to run
-func validateAndExtractChecks(checksStr string, important bool) (auditChecks, error) {
+func parseAuditChecks(checksStr string, important bool) (auditChecks, error) {
 	// can't enable both important and specified checks, since they're predefined
 	if important && checksStr != "" {
 		return auditChecks{}, fmt.Errorf("important checks are predefined")

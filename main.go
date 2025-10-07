@@ -101,15 +101,10 @@ func (c *config) validateAndExtract() (auditChecks, error) {
 		return auditChecks{}, err
 	}
 
-	checksToRun, err := validateAndExtractChecks(c.checks, c.important)
-	if err != nil {
-		return auditChecks{}, err
-	}
-
 	err = validatePlacesSearchPrompt(c.search)
 	if err != nil {
 		return auditChecks{}, err
 	}
 
-	return checksToRun, nil
+	return parseAuditChecks(c.checks, c.important)
 }
