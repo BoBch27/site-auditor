@@ -23,7 +23,9 @@ func newExtractors(placesPrompt, searchPrompt, inputFile string) ([]extractor, e
 	}
 
 	googleSearchSource := newGoogleSearchSource(searchPrompt)
-	extractors = append(extractors, googleSearchSource)
+	if googleSearchSource != nil {
+		extractors = append(extractors, googleSearchSource)
+	}
 
 	csvSource, err := newCSVSource(inputFile)
 	if err != nil {

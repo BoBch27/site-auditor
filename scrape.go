@@ -20,13 +20,17 @@ type googleSearchSource struct {
 
 // newGoogleSearchSource creates a new googleSearchSource instance
 func newGoogleSearchSource(searchPrompt string) *googleSearchSource {
+	if searchPrompt == "" {
+		return nil // not using Google Search source
+	}
+
 	return &googleSearchSource{searchPrompt}
 }
 
 // extract queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
 func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
-	if s.searchPrompt == "" {
+	if s == nil || s.searchPrompt == "" {
 		return nil, nil
 	}
 
