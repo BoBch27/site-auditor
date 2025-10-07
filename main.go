@@ -37,15 +37,13 @@ func main() {
 	spinner.stop()
 
 	// initiate different url sources
-	spinner.start("Initialising website sources...")
+	spinner.start("Initialising resources...")
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("\n❌ %v\n", err)
 	}
-	spinner.stop()
 
 	// initiate result sink
-	spinner.start("Initialising result sink...")
 	csvSink, err := newCSVSink(config.output)
 	if err != nil {
 		log.Fatalf("\n❌ %v\n", err)
