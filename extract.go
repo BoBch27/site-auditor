@@ -9,31 +9,37 @@ type extractor interface {
 
 // extractWebsites collects websites based on input method
 func extractWebsites(ctx context.Context, placesPrompt, searchPrompt, inputFile string) ([]*website, error) {
-	var urls []string
-
-	// search for URLs from Google Places
-	placesSource := newGooglePlacesSource(placesPrompt)
-	placesURLs, err := placesSource.extract(ctx)
-	if err != nil {
-		return nil, err
+	extractors := []extractor{
+		newGooglePlacesSource(placesPrompt),
+		newGoogleSearchSource(searchPrompt),
+		newCSVSource(inputFile),
 	}
-	urls = append(urls, placesURLs...)
 
-	// scrape URLs from Google Search
-	searchSource := newGoogleSearchSource(searchPrompt)
-	scrapedURLs, err := searchSource.extract(ctx)
-	if err != nil {
-		return nil, err
+	type result struct {
+		urls []string
+		err  error
 	}
-	urls = append(urls, scrapedURLs...)
 
-	// extract URLs from CSV
-	csvSource := newCSVSource(inputFile)
-	readURLs, err := csvSource.extract(ctx)
-	if err != nil {
-		return nil, err
+	resultCh := make(chan result, len(extractors))
+
+	// launch all extractors concurrently
+	for _, ext := range extractors {
+		go func(e extractor) {
+			urls, err := e.extract(ctx)
+			resultCh <- result{urls: urls, err: err}
+		}(ext)
 	}
-	urls = append(urls, readURLs...)
 
-	return filterWebsites(urls), nil
+	// collect results
+	var allURLs []string
+	for range len(extractors) {
+		r := <-resultCh
+		if r.err != nil {
+			return nil, r.err // fail on first error
+		}
+
+		allURLs = append(allURLs, r.urls...)
+	}
+
+	return filterWebsites(allURLs), nil
 }
