@@ -52,19 +52,16 @@ func extractWebsites(ctx context.Context, extractors []extractor) ([]*website, e
 	for _, ext := range extractors {
 		go func(e extractor) {
 			urls, err := e.extract(ctx)
-			resultCh <- result{
-				urls: urls,
-				err:  fmt.Errorf("failed to extract from %s: %w", e.getName(), err),
-			}
+			resultCh <- result{urls, err}
 		}(ext)
 	}
 
 	// collect results
 	var allURLs []string
-	for range len(extractors) {
+	for _, ext := range extractors {
 		r := <-resultCh
 		if r.err != nil {
-			return nil, r.err // fail on first error
+			return nil, fmt.Errorf("failed to extract from %s: %w", ext.getName(), r.err) // fail on first error
 		}
 
 		allURLs = append(allURLs, r.urls...)
