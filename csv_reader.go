@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -23,14 +24,25 @@ func validateInputFile(filename string) error {
 	return nil
 }
 
-// readURLsFromCSV reads the given CSV file and returns a slice of URLs
+// csvExtractor is responsible for reading a CSV file and extracting URLs
+// from it - it satisfies the extractor interface
+type csvExtractor struct {
+	inputFile string
+}
+
+// newCSVExtractor creates a new csvExtractor instance
+func newCSVExtractor(inputFile string) *csvExtractor {
+	return &csvExtractor{inputFile}
+}
+
+// extract reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
-func readURLsFromCSV(filename string) ([]string, error) {
-	if filename == "" {
+func (c *csvExtractor) extract(_ context.Context) ([]string, error) {
+	if c.inputFile == "" {
 		return nil, nil
 	}
 
-	file, err := os.Open(filename)
+	file, err := os.Open(c.inputFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}

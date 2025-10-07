@@ -26,7 +26,8 @@ func extractWebsites(ctx context.Context, searchPrompt, scrapePrompt, inputFile 
 	urls = append(urls, scrapedURLs...)
 
 	// extract URLs from CSV
-	readURLs, err := readURLsFromCSV(inputFile)
+	csvExtractor := newCSVExtractor(inputFile)
+	readURLs, err := csvExtractor.extract(ctx)
 	if err != nil {
 		return nil, err
 	}
