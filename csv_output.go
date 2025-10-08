@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-// csvSink handles writing audit results to a CSV file
-type csvSink struct {
+// CSVSink handles writing audit results to a CSV file
+type CSVSink struct {
 	outputFile string
 }
 
-// newCSVSink creates a new csvSink instance
-func newCSVSink(outputFile string) (*csvSink, error) {
-	newSink := csvSink{outputFile}
+// NewCSVSink creates a new CSVSink instance
+func NewCSVSink(outputFile string) (*CSVSink, error) {
+	newSink := CSVSink{outputFile}
 	err := newSink.validateAndCreateOutputFile()
 	if err != nil {
 		return nil, fmt.Errorf("failed csv output file validation/creation: %w", err)
@@ -24,7 +24,7 @@ func newCSVSink(outputFile string) (*csvSink, error) {
 }
 
 // validateAndCreateOutputFile ensures the output directory exists and is writable
-func (s *csvSink) validateAndCreateOutputFile() error {
+func (s *CSVSink) validateAndCreateOutputFile() error {
 	if s.outputFile == "" {
 		return fmt.Errorf("output path cannot be empty")
 	}
@@ -40,8 +40,12 @@ func (s *csvSink) validateAndCreateOutputFile() error {
 	return nil
 }
 
-// writeResults writes the results to the output CSV
-func (s *csvSink) writeResults(results []auditResult) error {
+// WriteResults writes the results to the output CSV
+func (s *CSVSink) WriteResults(results []auditResult) error {
+	if s == nil || s.outputFile == "" {
+		return fmt.Errorf("nil csv sink")
+	}
+
 	outFile, err := os.Open(s.outputFile)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -78,7 +82,7 @@ func (s *csvSink) writeResults(results []auditResult) error {
 }
 
 // getEnabledChecks returns headers and values for enabled checks
-func (s *csvSink) getEnabledChecks(checks auditChecks) (headers []string, values []string) {
+func (s *CSVSink) getEnabledChecks(checks auditChecks) (headers []string, values []string) {
 	if checks.secure.enabled {
 		headers = append(headers, "Secure")
 		values = append(values, s.boolToEmoji(checks.secure.result))
@@ -121,7 +125,7 @@ func (s *csvSink) getEnabledChecks(checks auditChecks) (headers []string, values
 
 // boolToEmoji takes in a boolean and returns corresponding
 // emoji to visual inspection
-func (s *csvSink) boolToEmoji(ok bool) string {
+func (s *CSVSink) boolToEmoji(ok bool) string {
 	if !ok {
 		return "❌"
 	}

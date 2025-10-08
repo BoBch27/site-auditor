@@ -42,7 +42,7 @@ func main() {
 		log.Fatalf("\n❌ failed audit service initialisation: %v\n", err)
 	}
 
-	csvSink, err := newCSVSink(config.output)
+	csvSink, err := NewCSVSink(config.output)
 	if err != nil {
 		log.Fatalf("\n❌ failed csv output initialisation: %v\n", err)
 	}
@@ -66,7 +66,7 @@ func main() {
 
 	// write audit results to csv
 	spinner.Start("Writing results...")
-	err = csvSink.writeResults(audits)
+	err = csvSink.WriteResults(audits)
 	if err != nil {
 		log.Fatalf("\n❌ failed results writing: %v\n", err)
 	}
