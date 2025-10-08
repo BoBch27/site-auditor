@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-type website struct {
+// Website represents a website being audited
+type Website struct {
 	originalURL string
 	scheme      string
 	domain      string
 }
 
-// newWebsite takes in a raw URL, parses it and returns a website
-// instance
-func newWebsite(rawURL string) (*website, error) {
+// NewWebsite creates a new Website instance
+func NewWebsite(rawURL string) (*Website, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL %s: %w", rawURL, err)
@@ -24,7 +24,7 @@ func newWebsite(rawURL string) (*website, error) {
 		return nil, fmt.Errorf("URL missing host: %s", rawURL)
 	}
 
-	return &website{
+	return &Website{
 		domain:      strings.ToLower(parsed.Host),
 		scheme:      parsed.Scheme,
 		originalURL: rawURL,
@@ -33,14 +33,14 @@ func newWebsite(rawURL string) (*website, error) {
 
 // isIgnored reports whether the given website domain
 // matches any of the ignored patterns to help avoid duplicates
-func (w *website) isIgnored(ignoredPatterns []string) bool {
+func (w *Website) isIgnored(ignoredPatterns []string) bool {
 	return isIgnoredResource(w.domain, ignoredPatterns)
 }
 
 // filterWebsites converts raw URLs to websites and
 // filters out duplicates/ignored domains
-func filterWebsites(rawURLs []string) []*website {
-	websites := []*website{}
+func FilterWebsites(rawURLs []string) []*Website {
+	websites := []*Website{}
 	seen := map[string]bool{}
 
 	for _, url := range rawURLs {
@@ -48,7 +48,7 @@ func filterWebsites(rawURLs []string) []*website {
 			continue
 		}
 
-		website, err := newWebsite(url)
+		website, err := NewWebsite(url)
 		if err != nil {
 			fmt.Printf("⚠️ %v\n", err)
 			continue

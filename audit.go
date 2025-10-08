@@ -145,7 +145,7 @@ type auditResult struct {
 }
 
 // Run executes the audit process in a headless browser, performing specified checks
-func (a *Audit) Run(ctx context.Context, websites []*website) ([]auditResult, error) {
+func (a *Audit) Run(ctx context.Context, websites []*Website) ([]auditResult, error) {
 	if a == nil {
 		return nil, fmt.Errorf("nil audit")
 	}
@@ -206,7 +206,7 @@ func (a *Audit) Run(ctx context.Context, websites []*website) ([]auditResult, er
 
 // runSingle opens the site in a headless browser and executes various checks
 // before returning an audit result
-func (a *Audit) runSingle(ctx context.Context, website *website) auditResult {
+func (a *Audit) runSingle(ctx context.Context, website *Website) auditResult {
 	result := auditResult{website: website.domain, checks: a.checks}
 
 	// create new window context
