@@ -39,6 +39,8 @@ Make sure you have Google Chrome or Chromium installed and accessible in your `P
 ./site-auditor -input=websites.csv -output=results.csv
 ```
 ```bash
+# set Maps API Key as an environment variable before running a Google Places Search
+export MAPS_API_KEY="Your Maps API Key" && \
 ./site-auditor -search="beauty salon in manchester" -output=results.csv -checks=mobile,form,tech
 ```
 ```bash
@@ -51,6 +53,7 @@ Make sure you have Google Chrome or Chromium installed and accessible in your `P
 -`output`: Path to the output CSV file to write results  
 -`checks`: Comma-separated checks to run (security,lcp,console,request,headers,mobile,form,tech,screenshot). Empty = all checks  
 -`important`: Run only critical/important checks (faster)
+-`screenshot-dir`: Path to folder to store screenshots (if enabled)
 
 ## Example CSV Input
 
