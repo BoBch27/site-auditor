@@ -42,6 +42,7 @@ func NewExtractors(placesPrompt, searchPrompt, inputFile string) ([]Extractor, e
 // ExtractWebsites collects websites from different sources
 func ExtractWebsites(ctx context.Context, extractors []Extractor) ([]*Website, error) {
 	type result struct {
+		name string
 		urls []string
 		err  error
 	}
@@ -52,16 +53,16 @@ func ExtractWebsites(ctx context.Context, extractors []Extractor) ([]*Website, e
 	for _, ext := range extractors {
 		go func(e Extractor) {
 			urls, err := e.Extract(ctx)
-			resultCh <- result{urls, err}
+			resultCh <- result{e.GetName(), urls, err}
 		}(ext)
 	}
 
 	// collect results
 	var allURLs []string
-	for _, ext := range extractors {
+	for range len(extractors) {
 		r := <-resultCh
 		if r.err != nil {
-			return nil, fmt.Errorf("failed to extract from %s: %w", ext.GetName(), r.err) // fail on first error
+			return nil, fmt.Errorf("failed to extract from %s: %w", r.name, r.err) // fail on first error
 		}
 
 		allURLs = append(allURLs, r.urls...)
