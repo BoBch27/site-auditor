@@ -8,20 +8,20 @@ import (
 	"strings"
 )
 
-// csvSource extracts URLs by reading them from a CSV file
+// CSVSource extracts URLs by reading them from a CSV file
 // - it satisfies the extractor interface
-type csvSource struct {
+type CSVSource struct {
 	name      string
 	inputFile string
 }
 
-// newCSVSource creates a new csvSource instance
-func newCSVSource(inputFile string) (*csvSource, error) {
+// NewCSVSource creates a new csvSource instance
+func NewCSVSource(inputFile string) (*CSVSource, error) {
 	if inputFile == "" {
 		return nil, nil // not using CSV source
 	}
 
-	newSource := csvSource{name: "csv source", inputFile: inputFile}
+	newSource := CSVSource{name: "csv source", inputFile: inputFile}
 	err := newSource.validateInputFile()
 	if err != nil {
 		return nil, fmt.Errorf("failed csv input file validation: %w", err)
@@ -30,13 +30,13 @@ func newCSVSource(inputFile string) (*csvSource, error) {
 	return &newSource, nil
 }
 
-// getName returns the source name
-func (s *csvSource) getName() string {
+// GetName returns the source name
+func (s *CSVSource) GetName() string {
 	return s.name
 }
 
 // validateInputFile checks if the input CSV file exists and is readable
-func (s *csvSource) validateInputFile() error {
+func (s *CSVSource) validateInputFile() error {
 	_, err := os.Stat(s.inputFile)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("input file does not exist: %s", s.inputFile)
@@ -47,9 +47,9 @@ func (s *csvSource) validateInputFile() error {
 	return nil
 }
 
-// extract reads the given CSV file and returns a slice of URLs
+// Extract reads the given CSV file and returns a slice of URLs
 // assumes the first column contains URLs and skips the header
-func (s *csvSource) extract(_ context.Context) ([]string, error) {
+func (s *CSVSource) Extract(_ context.Context) ([]string, error) {
 	if s == nil || s.inputFile == "" {
 		return nil, nil
 	}

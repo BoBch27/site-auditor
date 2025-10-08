@@ -32,7 +32,7 @@ func main() {
 	// initialise internal resources - grouped here, since they do internal
 	// validations and that should be done before running actual logic
 	spinner.Start("Initialising resources...")
-	extractors, err := newExtractors(config.search, config.scrape, config.input)
+	extractors, err := NewExtractors(config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
 	}
@@ -50,7 +50,7 @@ func main() {
 
 	// collect websites from different sources
 	spinner.Start("Extracting websites...")
-	websites, err := extractWebsites(ctx, extractors)
+	websites, err := ExtractWebsites(ctx, extractors)
 	if err != nil {
 		log.Fatalf("\n❌ failed website extracting: %v\n", err)
 	}

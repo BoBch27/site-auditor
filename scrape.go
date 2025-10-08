@@ -12,30 +12,30 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// googleSearchSource extracts URLs by scraping Google Search results
+// GoogleSearchSource extracts URLs by scraping Google Search results
 // - it satisfies the extractor interface
-type googleSearchSource struct {
+type GoogleSearchSource struct {
 	name         string
 	searchPrompt string
 }
 
-// newGoogleSearchSource creates a new googleSearchSource instance
-func newGoogleSearchSource(searchPrompt string) *googleSearchSource {
+// NewGoogleSearchSource creates a new GoogleSearchSource instance
+func NewGoogleSearchSource(searchPrompt string) *GoogleSearchSource {
 	if searchPrompt == "" {
 		return nil // not using Google Search source
 	}
 
-	return &googleSearchSource{name: "google search source", searchPrompt: searchPrompt}
+	return &GoogleSearchSource{name: "google search source", searchPrompt: searchPrompt}
 }
 
-// getName returns the source name
-func (s *googleSearchSource) getName() string {
+// GetName returns the source name
+func (s *GoogleSearchSource) GetName() string {
 	return s.name
 }
 
 // extract queries Google with the specified search prompt in a
 // headless browser, and extracts the returned result URLs
-func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
+func (s *GoogleSearchSource) Extract(_ context.Context) ([]string, error) {
 	if s == nil || s.searchPrompt == "" {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func (s *googleSearchSource) extract(_ context.Context) ([]string, error) {
 
 // getDoc sends an HTTP Get request to Google, checks if there's a redirect link
 // and sends a request to it if so, before returning a parsed HTML document
-func (s *googleSearchSource) getDoc(searchPath string) (*goquery.Document, error) {
+func (s *GoogleSearchSource) getDoc(searchPath string) (*goquery.Document, error) {
 	req, _ := http.NewRequest("GET", "https://google.com"+searchPath, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
 

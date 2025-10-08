@@ -11,9 +11,9 @@ import (
 	"googlemaps.github.io/maps"
 )
 
-// googlePlacesSource extracts URLs by searching Google Places API
+// GooglePlacesSource extracts URLs by searching Google Places API
 // - it satisfies the extractor interface
-type googlePlacesSource struct {
+type GooglePlacesSource struct {
 	name                string
 	mapsClient          *maps.Client
 	searchPrompt        string
@@ -22,8 +22,8 @@ type googlePlacesSource struct {
 	boundsBufferPercent float64 // bounds expansion percentage
 }
 
-// newGooglePlacesSource creates a new googlePlacesSource instance
-func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
+// NewGooglePlacesSource creates a new GooglePlacesSource instance
+func NewGooglePlacesSource(searchPrompt string) (*GooglePlacesSource, error) {
 	if searchPrompt == "" {
 		return nil, nil // not using Google Places source
 	}
@@ -38,7 +38,7 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 		return nil, fmt.Errorf("failed to create maps client: %w", err)
 	}
 
-	newSource := googlePlacesSource{
+	newSource := GooglePlacesSource{
 		name:                "google places source",
 		mapsClient:          client,
 		searchPrompt:        searchPrompt,
@@ -55,13 +55,13 @@ func newGooglePlacesSource(searchPrompt string) (*googlePlacesSource, error) {
 	return &newSource, nil
 }
 
-// getName returns the source name
-func (s *googlePlacesSource) getName() string {
+// GetName returns the source name
+func (s *GooglePlacesSource) GetName() string {
 	return s.name
 }
 
 // validatePlacesSearchPrompt validates the search prompt format
-func (s *googlePlacesSource) validatePlacesSearchPrompt() error {
+func (s *GooglePlacesSource) validatePlacesSearchPrompt() error {
 	if !strings.Contains(s.searchPrompt, " in ") {
 		return fmt.Errorf("search prompt must be in format: \"[Business Type] in [Location]\"")
 	}
@@ -74,10 +74,10 @@ func (s *googlePlacesSource) validatePlacesSearchPrompt() error {
 	return nil
 }
 
-// extract queries Google Places for businesses matching
+// Extract queries Google Places for businesses matching
 // provided keyword in specified location and extracts company URLs
 // (uses tile-based grid approach to circumvent Places API limits)
-func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
+func (s *GooglePlacesSource) Extract(ctx context.Context) ([]string, error) {
 	if s == nil || s.searchPrompt == "" {
 		return nil, nil
 	}
@@ -140,7 +140,7 @@ func (s *googlePlacesSource) extract(ctx context.Context) ([]string, error) {
 }
 
 // geocodeBounds gets the viewport bounds for a place name
-func (s *googlePlacesSource) geocodeBounds(ctx context.Context, location string) (maps.LatLngBounds, error) {
+func (s *GooglePlacesSource) geocodeBounds(ctx context.Context, location string) (maps.LatLngBounds, error) {
 	res, err := s.mapsClient.Geocode(ctx, &maps.GeocodingRequest{Address: location})
 	if err != nil {
 		return maps.LatLngBounds{}, fmt.Errorf("failed Geocode API call: %w", err)
@@ -154,7 +154,7 @@ func (s *googlePlacesSource) geocodeBounds(ctx context.Context, location string)
 }
 
 // expandBounds adds a buffer around the original bounds
-func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds) maps.LatLngBounds {
+func (s *GooglePlacesSource) expandBounds(bounds maps.LatLngBounds) maps.LatLngBounds {
 	latRange := bounds.NorthEast.Lat - bounds.SouthWest.Lat
 	lngRange := bounds.NorthEast.Lng - bounds.SouthWest.Lng
 
@@ -174,7 +174,7 @@ func (s *googlePlacesSource) expandBounds(bounds maps.LatLngBounds) maps.LatLngB
 }
 
 // generateTiles splits bounds into tile centres for searches
-func (s *googlePlacesSource) generateTiles(bounds maps.LatLngBounds) []maps.LatLng {
+func (s *GooglePlacesSource) generateTiles(bounds maps.LatLngBounds) []maps.LatLng {
 	latStep := s.metresToLat(s.tileSizeMetres)
 	lngStep := s.metresToLng(s.tileSizeMetres, (bounds.NorthEast.Lat+bounds.SouthWest.Lat)/2)
 
@@ -189,18 +189,18 @@ func (s *googlePlacesSource) generateTiles(bounds maps.LatLngBounds) []maps.LatL
 }
 
 // metresToLat converts metres to latitude degrees
-func (s *googlePlacesSource) metresToLat(m float64) float64 {
+func (s *GooglePlacesSource) metresToLat(m float64) float64 {
 	return m / 111320.0
 }
 
 // metresToLng converts metres to longitude degrees at a given latitude
-func (s *googlePlacesSource) metresToLng(m, lat float64) float64 {
+func (s *GooglePlacesSource) metresToLng(m, lat float64) float64 {
 	return m / (111320.0 * math.Cos(lat*math.Pi/180))
 }
 
 // searchNearbyPlaces fetches up to 60 results for a given lat/lng,
 // filtered by keyword
-func (s *googlePlacesSource) searchNearbyPlaces(
+func (s *GooglePlacesSource) searchNearbyPlaces(
 	ctx context.Context,
 	keyword string,
 	lat, lng float64,
