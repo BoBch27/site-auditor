@@ -28,14 +28,6 @@ func main() {
 	}
 	spinner.stop()
 
-	// validate flags
-	spinner.start("Validating input...")
-	err = config.validateAndExtract()
-	if err != nil {
-		log.Fatalf("\n❌ failed input validation: %v\n", err)
-	}
-	spinner.stop()
-
 	// initiate different url sources
 	spinner.start("Initialising resources...")
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
@@ -100,15 +92,9 @@ func parseFlags() (*config, error) {
 		return nil, fmt.Errorf("unexpected arguments: %v", flag.Args())
 	}
 
-	return &config, nil
-}
-
-// validateAndExtract ensures the configuration is valid and
-// extracts specified audit checks to perform
-func (c *config) validateAndExtract() error {
-	if c.search == "" && c.scrape == "" && c.input == "" {
-		return fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
+	if config.search == "" && config.scrape == "" && config.input == "" {
+		return nil, fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
 	}
 
-	return nil
+	return &config, nil
 }
