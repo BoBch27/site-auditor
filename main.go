@@ -8,12 +8,13 @@ import (
 )
 
 type config struct {
-	search    string
-	scrape    string
-	input     string
-	output    string
-	checks    string
-	important bool
+	search        string
+	scrape        string
+	input         string
+	output        string
+	checks        string
+	important     bool
+	screenshotDir string
 }
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
 	}
 
-	audit, err := newAudit(config.checks, config.important)
+	audit, err := newAudit(config.checks, config.important, config.screenshotDir)
 	if err != nil {
 		log.Fatalf("\n❌ failed audit service initialisation: %v\n", err)
 	}
@@ -85,6 +86,7 @@ func parseFlags() (*config, error) {
 	flag.StringVar(&config.output, "output", "report.csv", "Path to output CSV report")
 	flag.StringVar(&config.checks, "checks", "", "Comma-separated checks to run (security,lcp,console,request,headers,mobile,form,tech,screenshot). Empty = all checks")
 	flag.BoolVar(&config.important, "important", false, "Run only critical/important checks (faster)")
+	flag.StringVar(&config.screenshotDir, "screenshot-dir", "screenshots", "Path to folder to store screenshots")
 
 	flag.Parse()
 

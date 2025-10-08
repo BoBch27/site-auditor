@@ -39,8 +39,8 @@ type auditCheck[T interface{}] struct {
 }
 
 // newAudit creates a new audit instance
-func newAudit(checksStr string, important bool) (*audit, error) {
-	audit := audit{checksStr: checksStr, important: important, screenshotDir: "screenshots"}
+func newAudit(checksStr string, important bool, screenshotDir string) (*audit, error) {
+	audit := audit{checksStr: checksStr, important: important, screenshotDir: screenshotDir}
 
 	err := audit.parseAndValidateChecks()
 	if err != nil {
@@ -55,7 +55,7 @@ func newAudit(checksStr string, important bool) (*audit, error) {
 	return &audit, nil
 }
 
-// parseChecks validates and specifies which audit checks to run, based on
+// parseAndValidateChecks validates and specifies which audit checks to run, based on
 // provided comma-separated string
 func (a *audit) parseAndValidateChecks() error {
 	// can't enable both important and specified checks, since they're predefined
