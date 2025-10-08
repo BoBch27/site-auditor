@@ -7,7 +7,7 @@ import (
 
 // Extractor defines the interface for extracting URLs from different sources
 type Extractor interface {
-	GetName() string // makes debugging easier
+	Name() string // makes debugging easier
 	Extract(ctx context.Context) ([]string, error)
 }
 
@@ -39,7 +39,7 @@ func NewExtractors(placesPrompt, searchPrompt, inputFile string) ([]Extractor, e
 	return extractors, nil
 }
 
-// ExtractWebsites collects websites from different sources
+// ExtractWebsites collects websites from different sources concurrently
 func ExtractWebsites(ctx context.Context, extractors []Extractor) ([]*Website, error) {
 	type result struct {
 		name string
@@ -53,7 +53,7 @@ func ExtractWebsites(ctx context.Context, extractors []Extractor) ([]*Website, e
 	for _, ext := range extractors {
 		go func(e Extractor) {
 			urls, err := e.Extract(ctx)
-			resultCh <- result{e.GetName(), urls, err}
+			resultCh <- result{e.Name(), urls, err}
 		}(ext)
 	}
 

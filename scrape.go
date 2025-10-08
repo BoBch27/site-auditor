@@ -28,8 +28,8 @@ func NewGoogleSearchSource(searchPrompt string) *GoogleSearchSource {
 	return &GoogleSearchSource{name: "google search source", searchPrompt: searchPrompt}
 }
 
-// GetName returns the source name
-func (s *GoogleSearchSource) GetName() string {
+// Name returns the source name
+func (s *GoogleSearchSource) Name() string {
 	return s.name
 }
 

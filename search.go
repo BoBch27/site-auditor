@@ -55,8 +55,8 @@ func NewGooglePlacesSource(searchPrompt string) (*GooglePlacesSource, error) {
 	return &newSource, nil
 }
 
-// GetName returns the source name
-func (s *GooglePlacesSource) GetName() string {
+// Name returns the source name
+func (s *GooglePlacesSource) Name() string {
 	return s.name
 }
 

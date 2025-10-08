@@ -30,8 +30,8 @@ func NewCSVSource(inputFile string) (*CSVSource, error) {
 	return &newSource, nil
 }
 
-// GetName returns the source name
-func (s *CSVSource) GetName() string {
+// Name returns the source name
+func (s *CSVSource) Name() string {
 	return s.name
 }
 
