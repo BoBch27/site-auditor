@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// CSVSink handles writing audit results to a CSV file
+// CSVSink handles writing audit results to a CSV file -
+// it represents the destination end of the audit data flow
 type CSVSink struct {
 	outputFile string
 }

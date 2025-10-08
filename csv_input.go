@@ -15,7 +15,7 @@ type CSVSource struct {
 	inputFile string
 }
 
-// NewCSVSource creates a new csvSource instance
+// NewCSVSource creates a new CSVSource instance
 func NewCSVSource(inputFile string) (*CSVSource, error) {
 	if inputFile == "" {
 		return nil, nil // not using CSV source

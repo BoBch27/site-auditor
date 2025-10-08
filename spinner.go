@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Spinner provides a simple terminal loading animation during long operations
 type Spinner struct {
 	chars []string
 	delay time.Duration
