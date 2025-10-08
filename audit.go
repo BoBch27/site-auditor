@@ -15,8 +15,8 @@ import (
 	"github.com/chromedp/chromedp/device"
 )
 
-// audit handles auditting of websites in a headless browser
-type audit struct {
+// Audit coordinates the website auditing process
+type Audit struct {
 	checksStr     string
 	checks        auditChecks
 	important     bool
@@ -38,9 +38,9 @@ type auditCheck[T interface{}] struct {
 	result  T
 }
 
-// newAudit creates a new audit instance
-func newAudit(checksStr string, important bool, screenshotDir string) (*audit, error) {
-	audit := audit{checksStr: checksStr, important: important, screenshotDir: screenshotDir}
+// NewAudit creates a new Audit instance
+func NewAudit(checksStr string, important bool, screenshotDir string) (*Audit, error) {
+	audit := Audit{checksStr: checksStr, important: important, screenshotDir: screenshotDir}
 
 	err := audit.parseAndValidateChecks()
 	if err != nil {
@@ -57,7 +57,7 @@ func newAudit(checksStr string, important bool, screenshotDir string) (*audit, e
 
 // parseAndValidateChecks validates and specifies which audit checks to run, based on
 // provided comma-separated string
-func (a *audit) parseAndValidateChecks() error {
+func (a *Audit) parseAndValidateChecks() error {
 	// can't enable both important and specified checks, since they're predefined
 	if a.important && a.checksStr != "" {
 		return fmt.Errorf("important checks are predefined")
@@ -123,7 +123,7 @@ func (a *audit) parseAndValidateChecks() error {
 
 // validateAndCreateScreenshotDir checks whether screenshots are enabled,
 // and ensures screenshot directory exists (or if not, create it)
-func (a *audit) validateAndCreateScreenshotDir() error {
+func (a *Audit) validateAndCreateScreenshotDir() error {
 	if !a.checks.screenshot.enabled {
 		return nil // not capturing screenshots
 	}
@@ -144,9 +144,12 @@ type auditResult struct {
 	auditErrs []string
 }
 
-// run opens all sites in a headless browser and executes various checks
-// before returning a set of audit results
-func (a *audit) run(ctx context.Context, websites []*website) ([]auditResult, error) {
+// Run executes the audit process in a headless browser, performing specified checks
+func (a *Audit) Run(ctx context.Context, websites []*website) ([]auditResult, error) {
+	if a == nil {
+		return nil, fmt.Errorf("nil audit")
+	}
+
 	if len(websites) == 0 {
 		return nil, fmt.Errorf("no websites to audit")
 	}
@@ -203,7 +206,7 @@ func (a *audit) run(ctx context.Context, websites []*website) ([]auditResult, er
 
 // runSingle opens the site in a headless browser and executes various checks
 // before returning an audit result
-func (a *audit) runSingle(ctx context.Context, website *website) auditResult {
+func (a *Audit) runSingle(ctx context.Context, website *website) auditResult {
 	result := auditResult{website: website.domain, checks: a.checks}
 
 	// create new window context
@@ -441,7 +444,7 @@ func (a *audit) runSingle(ctx context.Context, website *website) auditResult {
 
 // waitNetworkIdle returns a chromedp.Action that waits until network is idle,
 // similar to Puppeteer's "networkidle0"
-func (a *audit) waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
+func (a *Audit) waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		activeRequests := make(map[network.RequestID]string)
 		idleTimer := time.NewTimer(idleTime)
@@ -509,7 +512,7 @@ var ignoredIdlePatterns = []string{
 
 // checkSecurityHeaders looks for missing security headers from
 // the page's main document request
-func (a *audit) checkSecurityHeaders(resHeaders network.Headers) []string {
+func (a *Audit) checkSecurityHeaders(resHeaders network.Headers) []string {
 	// important security headers to check
 	securityHeaders := []string{
 		"Content-Security-Policy",
@@ -542,7 +545,7 @@ func (a *audit) checkSecurityHeaders(resHeaders network.Headers) []string {
 
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
-func (a *audit) captureScreenshot(ctx context.Context, domain string) (bool, error) {
+func (a *Audit) captureScreenshot(ctx context.Context, domain string) (bool, error) {
 	var screenshot []byte
 
 	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
@@ -562,7 +565,7 @@ func (a *audit) captureScreenshot(ctx context.Context, domain string) (bool, err
 }
 
 // sanitiseFilename removes characters that could cause filesystem issues
-func (a *audit) sanitiseFilename(s string) string {
+func (a *Audit) sanitiseFilename(s string) string {
 	// replace problematic characters
 	s = strings.ReplaceAll(s, "/", "_")
 	s = strings.ReplaceAll(s, "\\", "_")

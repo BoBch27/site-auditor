@@ -37,7 +37,7 @@ func main() {
 		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
 	}
 
-	audit, err := newAudit(config.checks, config.important, config.screenshotDir)
+	audit, err := NewAudit(config.checks, config.important, config.screenshotDir)
 	if err != nil {
 		log.Fatalf("\n❌ failed audit service initialisation: %v\n", err)
 	}
@@ -58,7 +58,7 @@ func main() {
 
 	// perform audits in a headless browser
 	spinner.Start("Auditing websites...")
-	audits, err := audit.run(ctx, websites)
+	audits, err := audit.Run(ctx, websites)
 	if err != nil {
 		log.Fatalf("\n❌ failed website auditing: %v\n", err)
 	}
