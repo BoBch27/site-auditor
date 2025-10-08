@@ -28,7 +28,8 @@ func main() {
 	}
 	spinner.stop()
 
-	// initiate different url sources
+	// initialise internal resources - grouped here, since they do internal
+	// validations and that should be done before running actual logic
 	spinner.start("Initialising resources...")
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
 	if err != nil {
@@ -40,7 +41,6 @@ func main() {
 		log.Fatalf("\n❌ failed audit service initialisation: %v\n", err)
 	}
 
-	// initiate result sink
 	csvSink, err := newCSVSink(config.output)
 	if err != nil {
 		log.Fatalf("\n❌ failed csv output initialisation: %v\n", err)
