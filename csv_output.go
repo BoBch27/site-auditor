@@ -47,7 +47,7 @@ func (s *CSVSink) WriteResults(results []auditResult) error {
 		return fmt.Errorf("nil csv sink")
 	}
 
-	outFile, err := os.Open(s.outputFile)
+	outFile, err := os.Create(s.outputFile)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
