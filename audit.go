@@ -17,9 +17,10 @@ import (
 
 // audit handles auditting of websites in a headless browser
 type audit struct {
-	checksStr string
-	checks    auditChecks
-	important bool
+	checksStr     string
+	checks        auditChecks
+	important     bool
+	screenshotDir string
 }
 type auditChecks struct {
 	secure           auditCheck[bool]
@@ -39,11 +40,16 @@ type auditCheck[T interface{}] struct {
 
 // newAudit creates a new audit instance
 func newAudit(checksStr string, important bool) (*audit, error) {
-	audit := audit{checksStr: checksStr, important: important}
+	audit := audit{checksStr: checksStr, important: important, screenshotDir: "screenshots"}
 
 	err := audit.parseAndValidateChecks()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse audit checks: %w", err)
+	}
+
+	err = audit.validateAndCreateScreenshotDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed screenshot directory validation/creation: %w", err)
 	}
 
 	return &audit, nil
@@ -110,6 +116,22 @@ func (a *audit) parseAndValidateChecks() error {
 		default:
 			return fmt.Errorf("unknown check: %s", check)
 		}
+	}
+
+	return nil
+}
+
+// validateAndCreateScreenshotDir checks whether screenshots are enabled,
+// and ensures screenshot directory exists (or if not, create it)
+func (a *audit) validateAndCreateScreenshotDir() error {
+	if !a.checks.screenshot.enabled {
+		return nil // not capturing screenshots
+	}
+
+	// ensure directory exists, else create it
+	err := os.MkdirAll(a.screenshotDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create screenshot directory: %w", err)
 	}
 
 	return nil
@@ -521,23 +543,16 @@ func (a *audit) checkSecurityHeaders(resHeaders network.Headers) []string {
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
 func (a *audit) captureScreenshot(ctx context.Context, domain string) (bool, error) {
-	// ensure directory exists
-	const screenshotDir = "screenshots"
-	err := os.MkdirAll(screenshotDir, 0755)
-	if err != nil {
-		return false, fmt.Errorf("failed to create screenshot directory: %w", err)
-	}
-
 	var screenshot []byte
 
-	err = chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
+	err := chromedp.Run(ctx, chromedp.FullScreenshot(&screenshot, 90))
 	if err != nil {
 		return false, fmt.Errorf("failed to capture screenshot: %w", err)
 	}
 
 	// sanitise domain for filesystem
 	safeDomain := a.sanitiseFilename(domain)
-	filename := filepath.Join(screenshotDir, fmt.Sprintf("screenshot_%s.jpg", safeDomain))
+	filename := filepath.Join(a.screenshotDir, fmt.Sprintf("screenshot_%s.jpg", safeDomain))
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
 		return false, fmt.Errorf("failed to write screenshot: %w", err)
