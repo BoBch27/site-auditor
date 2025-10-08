@@ -30,7 +30,7 @@ func main() {
 
 	// validate flags
 	spinner.start("Validating input...")
-	checksToRun, err := config.validateAndExtract()
+	err = config.validateAndExtract()
 	if err != nil {
 		log.Fatalf("\n❌ failed input validation: %v\n", err)
 	}
@@ -41,6 +41,11 @@ func main() {
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
+	}
+
+	audit, err := newAudit(config.checks, config.important)
+	if err != nil {
+		log.Fatalf("\n❌ failed audit service initialisation: %v\n", err)
 	}
 
 	// initiate result sink
@@ -60,7 +65,7 @@ func main() {
 
 	// perform audits in a headless browser
 	spinner.start("Auditing websites...")
-	audits, err := auditWebsites(ctx, websites, checksToRun, config.important)
+	audits, err := audit.run(ctx, websites)
 	if err != nil {
 		log.Fatalf("\n❌ failed website auditing: %v\n", err)
 	}
@@ -100,10 +105,10 @@ func parseFlags() (*config, error) {
 
 // validateAndExtract ensures the configuration is valid and
 // extracts specified audit checks to perform
-func (c *config) validateAndExtract() (auditChecks, error) {
+func (c *config) validateAndExtract() error {
 	if c.search == "" && c.scrape == "" && c.input == "" {
-		return auditChecks{}, fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
+		return fmt.Errorf("neither search prompt, nor scrape prompt, nor input file are specified")
 	}
 
-	return parseAuditChecks(c.checks, c.important)
+	return nil
 }

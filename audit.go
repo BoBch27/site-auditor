@@ -15,10 +15,11 @@ import (
 	"github.com/chromedp/chromedp/device"
 )
 
-type auditResult struct {
-	website   string
+// audit handles auditting of websites in a headless browser
+type audit struct {
+	checksStr string
 	checks    auditChecks
-	auditErrs []string
+	important bool
 }
 type auditChecks struct {
 	secure           auditCheck[bool]
@@ -36,27 +37,40 @@ type auditCheck[T interface{}] struct {
 	result  T
 }
 
-// parseAuditChecks takes in a comma-separated string, validates it, and specifies
-// which audit checks to run
-func parseAuditChecks(checksStr string, important bool) (auditChecks, error) {
-	// can't enable both important and specified checks, since they're predefined
-	if important && checksStr != "" {
-		return auditChecks{}, fmt.Errorf("important checks are predefined")
+// newAudit creates a new audit instance
+func newAudit(checksStr string, important bool) (*audit, error) {
+	audit := audit{checksStr: checksStr, important: important}
+
+	err := audit.parseAndValidateChecks()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse audit checks: %w", err)
 	}
 
-	// return predefined important checks
-	if important {
-		return auditChecks{
+	return &audit, nil
+}
+
+// parseChecks validates and specifies which audit checks to run, based on
+// provided comma-separated string
+func (a *audit) parseAndValidateChecks() error {
+	// can't enable both important and specified checks, since they're predefined
+	if a.important && a.checksStr != "" {
+		return fmt.Errorf("important checks are predefined")
+	}
+
+	// set predefined important checks
+	if a.important {
+		a.checks = auditChecks{
 			secure:           auditCheck[bool]{enabled: true},
 			responsiveIssues: auditCheck[[]string]{enabled: true},
 			formIssues:       auditCheck[[]string]{enabled: true},
 			techStack:        auditCheck[[]string]{enabled: true},
-		}, nil
+		}
+		return nil
 	}
 
-	// if no checks specified, return all enabled
-	if checksStr == "" {
-		return auditChecks{
+	// if no checks specified, set all enabled
+	if a.checksStr == "" {
+		a.checks = auditChecks{
 			secure:           auditCheck[bool]{enabled: true},
 			lcp:              auditCheck[float64]{enabled: true},
 			consoleErrs:      auditCheck[[]string]{enabled: true},
@@ -66,44 +80,51 @@ func parseAuditChecks(checksStr string, important bool) (auditChecks, error) {
 			formIssues:       auditCheck[[]string]{enabled: true},
 			techStack:        auditCheck[[]string]{enabled: true},
 			screenshot:       auditCheck[bool]{enabled: true},
-		}, nil
+		}
+		return nil
 	}
 
-	// disable all, then enable specified ones
-	checks := auditChecks{}
-
-	for check := range strings.SplitSeq(checksStr, ",") {
+	// all checks are disabled by default when initialising audit instance
+	// enable specified ones
+	for check := range strings.SplitSeq(a.checksStr, ",") {
 		check = strings.TrimSpace(check)
 		switch check {
 		case "security":
-			checks.secure.enabled = true
+			a.checks.secure.enabled = true
 		case "lcp":
-			checks.lcp.enabled = true
+			a.checks.lcp.enabled = true
 		case "console":
-			checks.consoleErrs.enabled = true
+			a.checks.consoleErrs.enabled = true
 		case "request":
-			checks.requestErrs.enabled = true
+			a.checks.requestErrs.enabled = true
 		case "headers":
-			checks.missingHeaders.enabled = true
+			a.checks.missingHeaders.enabled = true
 		case "mobile":
-			checks.responsiveIssues.enabled = true
+			a.checks.responsiveIssues.enabled = true
 		case "form":
-			checks.formIssues.enabled = true
+			a.checks.formIssues.enabled = true
 		case "tech":
-			checks.techStack.enabled = true
+			a.checks.techStack.enabled = true
 		case "screenshot":
-			checks.screenshot.enabled = true
+			a.checks.screenshot.enabled = true
 		default:
-			return checks, fmt.Errorf("unknown check: %s", check)
+			return fmt.Errorf("unknown check: %s", check)
 		}
 	}
 
-	return checks, nil
+	return nil
 }
 
-// auditWebsites opens all sites in a headless browser and executes various checks
+// auditResult holds audit results data useful for output
+type auditResult struct {
+	website   string
+	checks    auditChecks
+	auditErrs []string
+}
+
+// run opens all sites in a headless browser and executes various checks
 // before returning a set of audit results
-func auditWebsites(ctx context.Context, websites []*website, checks auditChecks, important bool) ([]auditResult, error) {
+func (a *audit) run(ctx context.Context, websites []*website) ([]auditResult, error) {
 	if len(websites) == 0 {
 		return nil, fmt.Errorf("no websites to audit")
 	}
@@ -152,16 +173,16 @@ func auditWebsites(ctx context.Context, websites []*website, checks auditChecks,
 	for i, website := range websites {
 		// audit each website
 		fmt.Printf("\r - auditing site %d/%d (%s)\n", i+1, sitesNo, website.domain)
-		results[i] = auditWebsite(browserCtx, website, checks, important)
+		results[i] = a.runSingle(browserCtx, website)
 	}
 
 	return results, nil
 }
 
-// auditWebsite opens the site in a headless browser and executes various checks
+// runSingle opens the site in a headless browser and executes various checks
 // before returning an audit result
-func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks, importantChecks bool) auditResult {
-	result := auditResult{website: website.domain, checks: checksToRun}
+func (a *audit) runSingle(ctx context.Context, website *website) auditResult {
+	result := auditResult{website: website.domain, checks: a.checks}
 
 	// create new window context
 	windowCtx, cancelWindow := chromedp.NewContext(ctx)
@@ -198,14 +219,14 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 			return fmt.Errorf("failed to enable page domain: %w", err)
 		}
 
-		if checksToRun.lcp.enabled {
+		if a.checks.lcp.enabled {
 			_, err = page.AddScriptToEvaluateOnNewDocument(lcpScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject LCP script: %w", err)
 			}
 		}
 
-		if checksToRun.consoleErrs.enabled || checksToRun.requestErrs.enabled {
+		if a.checks.consoleErrs.enabled || a.checks.requestErrs.enabled {
 			_, err = page.AddScriptToEvaluateOnNewDocument(errScript).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to inject error script: %w", err)
@@ -260,7 +281,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 	// force site to load over http in order to check if it auto redirects
 	// (if security check is enabled)
 	websiteScheme := website.scheme
-	if checksToRun.secure.enabled {
+	if a.checks.secure.enabled {
 		websiteScheme = "http"
 	}
 
@@ -276,7 +297,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 			return fmt.Errorf("failed to wait for \"body\": %w", err)
 		}
 
-		err = waitNetworkIdle(500*time.Millisecond, 10*time.Second).Do(ctx)
+		err = a.waitNetworkIdle(500*time.Millisecond, 10*time.Second).Do(ctx)
 		if err != nil {
 			// don't return error if check has timed out
 			if !errors.Is(err, context.DeadlineExceeded) {
@@ -307,14 +328,14 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 	}
 
 	// capture missing security headers
-	if checksToRun.missingHeaders.enabled {
-		result.checks.missingHeaders.result = checkSecurityHeaders(nr.Headers)
+	if a.checks.missingHeaders.enabled {
+		result.checks.missingHeaders.result = a.checkSecurityHeaders(nr.Headers)
 	}
 
 	// perform checks
 	err = chromedp.Run(timeoutCtx, chromedp.ActionFunc(func(ctx context.Context) error {
 		// capture site security (is HTTPS)
-		if checksToRun.secure.enabled {
+		if a.checks.secure.enabled {
 			err := chromedp.Evaluate(securityScript, &result.checks.secure.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate security: %w", err)
@@ -322,7 +343,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// calculate largest contentful paint time
-		if checksToRun.lcp.enabled {
+		if a.checks.lcp.enabled {
 			err := chromedp.Evaluate(`window.__lcp || 0`, &result.checks.lcp.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate LCP: %w", err)
@@ -330,8 +351,8 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// capture mobile responsiveness issues
-		if checksToRun.responsiveIssues.enabled {
-			script := fmt.Sprintf("%s(%t)", responsiveScript, importantChecks)
+		if a.checks.responsiveIssues.enabled {
+			script := fmt.Sprintf("%s(%t)", responsiveScript, a.important)
 			err = chromedp.Evaluate(script, &result.checks.responsiveIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate mobile responsiveness: %w", err)
@@ -339,7 +360,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// collect console errors and warnings
-		if checksToRun.consoleErrs.enabled {
+		if a.checks.consoleErrs.enabled {
 			err = chromedp.Evaluate(`window.__console_errors || []`, &result.checks.consoleErrs.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate console errors: %w", err)
@@ -347,7 +368,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// collect failed requests
-		if checksToRun.requestErrs.enabled {
+		if a.checks.requestErrs.enabled {
 			err = chromedp.Evaluate(`window.__request_errors || []`, &result.checks.requestErrs.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate request errors: %w", err)
@@ -355,8 +376,8 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// capture form issues
-		if checksToRun.formIssues.enabled {
-			script := fmt.Sprintf("%s(%t)", formScript, importantChecks)
+		if a.checks.formIssues.enabled {
+			script := fmt.Sprintf("%s(%t)", formScript, a.important)
 			err = chromedp.Evaluate(script, &result.checks.formIssues.result).Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate form issues: %w", err)
@@ -364,12 +385,12 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 		}
 
 		// capture common frontend technologies used
-		if checksToRun.techStack.enabled {
+		if a.checks.techStack.enabled {
 			// if important is enabled, only run check if important issues are found
 			hasImportantIssues := len(result.checks.responsiveIssues.result) > 0 ||
 				len(result.checks.formIssues.result) > 0
 
-			if !importantChecks || hasImportantIssues {
+			if !a.important || hasImportantIssues {
 				err = chromedp.Evaluate(techScript, &result.checks.techStack.result).Do(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to detect tech stack: %w", err)
@@ -385,8 +406,8 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 	}
 
 	// capture full page screenshot
-	if checksToRun.screenshot.enabled {
-		result.checks.screenshot.result, err = captureScreenshot(timeoutCtx, website.domain)
+	if a.checks.screenshot.enabled {
+		result.checks.screenshot.result, err = a.captureScreenshot(timeoutCtx, website.domain)
 		if err != nil {
 			result.auditErrs = append(result.auditErrs, err.Error())
 			return result
@@ -398,7 +419,7 @@ func auditWebsite(ctx context.Context, website *website, checksToRun auditChecks
 
 // waitNetworkIdle returns a chromedp.Action that waits until network is idle,
 // similar to Puppeteer's "networkidle0"
-func waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
+func (a *audit) waitNetworkIdle(idleTime, maxWait time.Duration) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		activeRequests := make(map[network.RequestID]string)
 		idleTimer := time.NewTimer(idleTime)
@@ -466,7 +487,7 @@ var ignoredIdlePatterns = []string{
 
 // checkSecurityHeaders looks for missing security headers from
 // the page's main document request
-func checkSecurityHeaders(resHeaders network.Headers) []string {
+func (a *audit) checkSecurityHeaders(resHeaders network.Headers) []string {
 	// important security headers to check
 	securityHeaders := []string{
 		"Content-Security-Policy",
@@ -499,7 +520,7 @@ func checkSecurityHeaders(resHeaders network.Headers) []string {
 
 // captureScreenshot takes a full page screenshot and saves it
 // to disk
-func captureScreenshot(ctx context.Context, domain string) (bool, error) {
+func (a *audit) captureScreenshot(ctx context.Context, domain string) (bool, error) {
 	// ensure directory exists
 	const screenshotDir = "screenshots"
 	err := os.MkdirAll(screenshotDir, 0755)
@@ -515,7 +536,7 @@ func captureScreenshot(ctx context.Context, domain string) (bool, error) {
 	}
 
 	// sanitise domain for filesystem
-	safeDomain := sanitiseFilename(domain)
+	safeDomain := a.sanitiseFilename(domain)
 	filename := filepath.Join(screenshotDir, fmt.Sprintf("screenshot_%s.jpg", safeDomain))
 	err = os.WriteFile(filename, screenshot, 0644)
 	if err != nil {
@@ -526,7 +547,7 @@ func captureScreenshot(ctx context.Context, domain string) (bool, error) {
 }
 
 // sanitiseFilename removes characters that could cause filesystem issues
-func sanitiseFilename(s string) string {
+func (a *audit) sanitiseFilename(s string) string {
 	// replace problematic characters
 	s = strings.ReplaceAll(s, "/", "_")
 	s = strings.ReplaceAll(s, "\\", "_")
