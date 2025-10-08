@@ -19,19 +19,19 @@ type config struct {
 
 func main() {
 	ctx := context.Background()
-	spinner := newSpinner()
+	spinner := NewSpinner()
 
 	// parse flags
-	spinner.start("Parsing input...")
+	spinner.Start("Parsing input...")
 	config, err := parseFlags()
 	if err != nil {
 		log.Fatalf("\n❌ failed flag parsing: %v\n", err)
 	}
-	spinner.stop()
+	spinner.Stop()
 
 	// initialise internal resources - grouped here, since they do internal
 	// validations and that should be done before running actual logic
-	spinner.start("Initialising resources...")
+	spinner.Start("Initialising resources...")
 	extractors, err := newExtractors(config.search, config.scrape, config.input)
 	if err != nil {
 		log.Fatalf("\n❌ failed extractors initialisation: %v\n", err)
@@ -46,31 +46,31 @@ func main() {
 	if err != nil {
 		log.Fatalf("\n❌ failed csv output initialisation: %v\n", err)
 	}
-	spinner.stop()
+	spinner.Stop()
 
 	// collect websites from different sources
-	spinner.start("Extracting websites...")
+	spinner.Start("Extracting websites...")
 	websites, err := extractWebsites(ctx, extractors)
 	if err != nil {
 		log.Fatalf("\n❌ failed website extracting: %v\n", err)
 	}
-	spinner.stop()
+	spinner.Stop()
 
 	// perform audits in a headless browser
-	spinner.start("Auditing websites...")
+	spinner.Start("Auditing websites...")
 	audits, err := audit.run(ctx, websites)
 	if err != nil {
 		log.Fatalf("\n❌ failed website auditing: %v\n", err)
 	}
-	spinner.stop()
+	spinner.Stop()
 
 	// write audit results to csv
-	spinner.start("Writing results...")
+	spinner.Start("Writing results...")
 	err = csvSink.writeResults(audits)
 	if err != nil {
 		log.Fatalf("\n❌ failed results writing: %v\n", err)
 	}
-	spinner.stop()
+	spinner.Stop()
 
 	fmt.Println("✅ Done")
 }

@@ -6,21 +6,21 @@ import (
 	"time"
 )
 
-type spinner struct {
+type Spinner struct {
 	chars []string
 	delay time.Duration
 	end   chan struct{}
 	wg    sync.WaitGroup
 }
 
-func newSpinner() *spinner {
-	return &spinner{
+func NewSpinner() *Spinner {
+	return &Spinner{
 		chars: []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
 		delay: 100 * time.Millisecond,
 	}
 }
 
-func (s *spinner) start(message string) {
+func (s *Spinner) Start(message string) {
 	s.end = make(chan struct{})
 	s.wg.Add(1)
 	go func() {
@@ -40,7 +40,7 @@ func (s *spinner) start(message string) {
 	}()
 }
 
-func (s *spinner) stop() {
+func (s *Spinner) Stop() {
 	close(s.end)
 	s.wg.Wait()
 }
